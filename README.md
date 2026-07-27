@@ -42,10 +42,19 @@ rx/
 │   ├── 05-design-system.md        ← Design System néfron· (tokens, glass, componentes)
 │   └── 06-wireframes.md           ← wireframes de alta fidelidade (texto)
 ├── app/                           ← frontend Flutter (Design System + telas)
-│   └── lib/{theme,widgets}/       ← tokens e componentes reutilizáveis
+│   └── lib/
+│       ├── theme/ widgets/        ← tokens e componentes reutilizáveis
+│       ├── core/                  ← ApiClient (Dio), TokenStorage, providers
+│       ├── features/auth/         ← login, 2FA, seleção de contexto (Riverpod)
+│       ├── features/dashboard/    ← dashboard por perfil
+│       └── router.dart            ← go_router com redirect por etapa de auth
+├── backend/                       ← API FastAPI (auth próprio JWT + 2FA TOTP)
+│   └── app/{core,models,schemas,services,api}/
 └── db/
     ├── schema.sql                 ← schema PostgreSQL/Supabase completo
-    └── seed.sql                   ← dados de referência (CID-10 nefro, PCDTs, catálogos)
+    ├── seed.sql                   ← dados de referência (CID-10 nefro, PCDTs, catálogos)
+    ├── auth_fastapi_columns.sql   ← colunas de credencial (auth próprio)
+    └── rls_fastapi_context.sql    ← RLS dirigido por GUC (app.profissional_id)
 ```
 
 ---
@@ -67,7 +76,7 @@ rx/
 
 - [x] **Etapa 1 — Arquitetura + Modelo de dados + Fluxos**
 - [x] **Etapa 2 — Design System `néfron·` + wireframes** (`docs/05`, `docs/06`, `app/`)
-- [ ] Etapa 3 — Módulo Autenticação + Dashboard
+- [x] **Etapa 3 — Autenticação (login + 2FA TOTP + RBAC) + Dashboard** (`backend/`, `app/lib/features/`)
 - [ ] Etapa 4 — Prontuário + Evolução
 - [ ] Etapa 5 — Prescrição de HD
 - [ ] Etapa 6 — LME Inteligente
