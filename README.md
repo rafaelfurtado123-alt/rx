@@ -77,7 +77,7 @@ rx/
 - [x] **Etapa 1 — Arquitetura + Modelo de dados + Fluxos**
 - [x] **Etapa 2 — Design System `néfron·` + wireframes** (`docs/05`, `docs/06`, `app/`)
 - [x] **Etapa 3 — Autenticação (login + 2FA TOTP + RBAC) + Dashboard** (`backend/`, `app/lib/features/`)
-- [ ] Etapa 4 — Prontuário + Evolução
+- [x] **Etapa 4 — Prontuário + Evolução (timeline, SOAP+IA, gráficos de tendência, Kt/V)**
 - [ ] Etapa 5 — Prescrição de HD
 - [ ] Etapa 6 — LME Inteligente
 

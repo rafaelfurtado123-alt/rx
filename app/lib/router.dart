@@ -7,11 +7,13 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/select_context_screen.dart';
 import 'features/auth/two_factor_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
+import 'features/patients/patient_detail_screen.dart';
+import 'features/patients/patients_list_screen.dart';
+import 'features/patients/soap_editor_screen.dart';
+
+const _authRoutes = {'/login', '/2fa', '/select-context'};
 
 /// Roteador com redirecionamento baseado na etapa de autenticação.
-///
-/// O `refreshListenable` observa o [AuthController], de modo que qualquer
-/// mudança de etapa reavalia as rotas automaticamente.
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _AuthListenable(ref);
 
@@ -21,13 +23,21 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final stage = ref.read(authControllerProvider).stage;
       final loc = state.matchedLocation;
-      final dest = switch (stage) {
-        AuthStage.unauthenticated => '/login',
-        AuthStage.awaiting2fa => '/2fa',
-        AuthStage.selectingContext => '/select-context',
-        AuthStage.authenticated => '/dashboard',
-      };
-      return loc == dest ? null : dest;
+
+      // Fluxo de autenticação incompleto: força a etapa correspondente.
+      if (stage != AuthStage.authenticated) {
+        final dest = switch (stage) {
+          AuthStage.unauthenticated => '/login',
+          AuthStage.awaiting2fa => '/2fa',
+          AuthStage.selectingContext => '/select-context',
+          AuthStage.authenticated => '/dashboard',
+        };
+        return loc == dest ? null : dest;
+      }
+
+      // Autenticado: sai das telas de auth; caso contrário, navega livremente.
+      if (_authRoutes.contains(loc)) return '/dashboard';
+      return null;
     },
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
@@ -35,6 +45,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/select-context', builder: (_, __) => const SelectContextScreen()),
       GoRoute(path: '/dashboard', builder: (_, __) => const DashboardScreen()),
+      GoRoute(path: '/pacientes', builder: (_, __) => const PatientsListScreen()),
+      GoRoute(
+        path: '/pacientes/:id',
+        builder: (_, s) =>
+            PatientDetailScreen(pacienteId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/pacientes/:id/evolucao',
+        builder: (_, s) => SoapEditorScreen(pacienteId: s.pathParameters['id']!),
+      ),
     ],
   );
 });

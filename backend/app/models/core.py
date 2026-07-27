@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
 PAPEIS = ("medico", "enfermeiro", "tecnico", "administrativo", "admin", "auditor", "paciente")
+SEXOS = ("masculino", "feminino", "intersexo", "nao_informado")
 
 
 class Unidade(Base):
@@ -81,9 +82,17 @@ class Paciente(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True,
                                           default=uuid.uuid4)
     nome: Mapped[str] = mapped_column(Text, nullable=False)
+    nome_social: Mapped[str | None] = mapped_column(Text)
     cns: Mapped[str | None] = mapped_column(String(15), unique=True)
+    cpf: Mapped[str | None] = mapped_column(String(11), unique=True)
+    sexo: Mapped[str] = mapped_column(
+        SAEnum(*SEXOS, name="sexo", schema="core", create_type=False),
+        default="nao_informado",
+    )
     data_nascimento: Mapped[dt.date | None] = mapped_column(Date)
+    etiologia_drc: Mapped[str | None] = mapped_column(Text)
     estagio_drc: Mapped[int | None] = mapped_column()
+    inicio_trs: Mapped[dt.date | None] = mapped_column(Date)
     turno_dialise: Mapped[str | None] = mapped_column(Text)
     deleted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
 
