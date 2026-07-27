@@ -38,7 +38,11 @@ rx/
 │   ├── 01-arquitetura.md          ← arquitetura completa (C4, camadas, segurança, deploy)
 │   ├── 02-modelo-de-dados.md      ← modelo de dados narrativo + ERD textual
 │   ├── 03-fluxos-principais.md    ← fluxos: HD, LME, prescrição, auditoria
-│   └── 04-roadmap.md              ← fases de entrega
+│   ├── 04-roadmap.md              ← fases de entrega
+│   ├── 05-design-system.md        ← Design System néfron· (tokens, glass, componentes)
+│   └── 06-wireframes.md           ← wireframes de alta fidelidade (texto)
+├── app/                           ← frontend Flutter (Design System + telas)
+│   └── lib/{theme,widgets}/       ← tokens e componentes reutilizáveis
 └── db/
     ├── schema.sql                 ← schema PostgreSQL/Supabase completo
     └── seed.sql                   ← dados de referência (CID-10 nefro, PCDTs, catálogos)
@@ -61,8 +65,8 @@ rx/
 
 ## 5. Status de entrega
 
-- [x] **Etapa 1 — Arquitetura + Modelo de dados + Fluxos** (este commit)
-- [ ] Etapa 2 — Design System + wireframes de alta fidelidade (texto)
+- [x] **Etapa 1 — Arquitetura + Modelo de dados + Fluxos**
+- [x] **Etapa 2 — Design System `néfron·` + wireframes** (`docs/05`, `docs/06`, `app/`)
 - [ ] Etapa 3 — Módulo Autenticação + Dashboard
 - [ ] Etapa 4 — Prontuário + Evolução
 - [ ] Etapa 5 — Prescrição de HD
