@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend — ruff + pytest (Postgres 16)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nefron
+          POSTGRES_PASSWORD: nefron
+          POSTGRES_DB: nefron
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nefron"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGPASSWORD: nefron
+      NEFRON_TEST_DATABASE_URL: postgresql+asyncpg://nefron:nefron@localhost:5432/nefron
+      NEFRON_ENVIRONMENT: test
+      NEFRON_JWT_SECRET: ci-secret-forte-de-32-bytes-ou-mais-0123456789
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar dependências
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint (ruff)
+        working-directory: backend
+        run: ruff check app tests scripts
+
+      - name: Aplicar schema e migrações
+        run: |
+          # Shim do Supabase Auth (schema.sql referencia auth.uid())
+          psql -h localhost -U nefron -d nefron -c \
+            "create schema auth; create function auth.uid() returns uuid as 'select gen_random_uuid()' language sql stable;"
+          for f in schema.sql auth_fastapi_columns.sql rls_fastapi_context.sql \
+                   seed.sql interacoes.sql escala.sql vidaas.sql receitas.sql; do
+            echo "== db/$f =="
+            psql -h localhost -U nefron -d nefron -v ON_ERROR_STOP=1 -f "db/$f"
+          done
+
+      - name: Testes (pytest — 58 testes de unidade + integração)
+        working-directory: backend
+        run: python -m pytest -q
+
+  flutter:
+    name: Flutter — analyze (informativo)
+    runs-on: ubuntu-latest
+    # Informativo: não bloqueia o merge enquanto o app não tem golden tests.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Analyze
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos

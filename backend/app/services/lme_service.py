@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.clinico import ExameResultado, RefExame
-from ..models.core import Paciente, Profissional
+from ..models.core import Paciente
 from ..models.hd import RefMedicamento
 from ..models.lme import ExameVinculado, Laudo, LaudoItem, RefPcdt, Termo
 from ..schemas.auth import CurrentUser

@@ -32,5 +32,11 @@ dev = [
 line-length = 100
 target-version = "py311"
 
+[tool.ruff.lint]
+# Conjunto explícito: erros reais + imports. Regras de estilo agressivas
+# (B008 conflita com Depends() do FastAPI; RUF012 com modelos SQLAlchemy)
+# ficam de fora por decisão de projeto.
+select = ["E4", "E7", "E9", "F", "W", "I"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

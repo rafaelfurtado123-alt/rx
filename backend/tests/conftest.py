@@ -5,7 +5,6 @@ import os
 import uuid
 
 import pyotp
-import pytest
 import pytest_asyncio
 
 TEST_DB = os.getenv("NEFRON_TEST_DATABASE_URL")

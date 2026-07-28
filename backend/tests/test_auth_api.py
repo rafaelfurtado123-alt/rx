@@ -12,7 +12,6 @@ import pyotp
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
 
 TEST_DB = os.getenv("NEFRON_TEST_DATABASE_URL")
 pytestmark = pytest.mark.skipif(not TEST_DB, reason="defina NEFRON_TEST_DATABASE_URL")
@@ -101,8 +100,9 @@ async def test_wrong_password_is_generic(client, demo):
 
 
 async def test_dashboard_requires_context(client, demo):
-    from app.core.security import create_token
     import datetime as dt
+
+    from app.core.security import create_token
     # access token SEM unidade/papel deve ser barrado
     bad = create_token("x", "access", dt.timedelta(minutes=5))
     r = await client.get("/api/v1/dashboard", headers={"Authorization": f"Bearer {bad}"})

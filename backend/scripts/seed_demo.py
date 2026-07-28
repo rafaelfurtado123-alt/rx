@@ -17,7 +17,7 @@ from sqlalchemy import select
 
 from app.core.database import SessionLocal
 from app.core.security import hash_password
-from app.models.clinico import ExameResultado, Evolucao, RefExame
+from app.models.clinico import Evolucao, ExameResultado, RefExame
 from app.models.core import Paciente, PacienteUnidade, Profissional, Unidade, Vinculo
 
 DEMO_EMAIL = "ana@nefron.com.br"

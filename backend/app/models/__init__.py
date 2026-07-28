@@ -1,8 +1,10 @@
 from .base import Base
 from .clinico import Alergia, Emar, Episodio, Evolucao, ExameResultado, RefExame
 from .core import Paciente, PacienteUnidade, Profissional, Unidade, Vinculo
+from .fatura import Apac, Conta, ContaItem, RefSigtap
 from .hd import (
     AcessoVascular,
+    Escala,
     Intercorrencia,
     Prescricao,
     PrescricaoHD,
@@ -12,8 +14,6 @@ from .hd import (
     SessaoHD,
     SessaoParametro,
 )
-from .fatura import Apac, Conta, ContaItem, RefSigtap
-from .hd import Escala
 from .lme import ExameVinculado, Laudo, LaudoItem, RefPcdt, Termo
 from .seguranca import Assinatura, VidaasSessao
 

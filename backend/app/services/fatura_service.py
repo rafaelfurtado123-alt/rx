@@ -12,7 +12,6 @@ import calendar
 import datetime as dt
 import uuid
 
-from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
