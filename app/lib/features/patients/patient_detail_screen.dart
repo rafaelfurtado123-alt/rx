@@ -95,6 +95,14 @@ class _QuickActions extends StatelessWidget {
                   context.go('/pacientes/$pacienteId/sessao');
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.description_outlined),
+                title: const Text('LME Inteligente'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.go('/pacientes/$pacienteId/lme');
+                },
+              ),
             ],
           ),
         ),

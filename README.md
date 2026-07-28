@@ -79,7 +79,9 @@ rx/
 - [x] **Etapa 3 — Autenticação (login + 2FA TOTP + RBAC) + Dashboard** (`backend/`, `app/lib/features/`)
 - [x] **Etapa 4 — Prontuário + Evolução (timeline, SOAP+IA, gráficos de tendência, Kt/V)**
 - [x] **Etapa 5 — Prescrição de HD nível Tasy + Módulo de Sessão (recepção → monitor → adequação)**
-- [ ] Etapa 6 — LME Inteligente
+- [x] **Etapa 6 — LME Inteligente (motor PCDT, autopreenchimento, PDF + TER, validade 90d, renovação 1 clique)**
+
+**Todas as 6 etapas do plano original estão concluídas.** Suíte de testes: 31/31 em PostgreSQL 16 real.
 
 Consulte `docs/04-roadmap.md` para o plano completo.
 

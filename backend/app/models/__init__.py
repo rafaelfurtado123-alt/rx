@@ -11,6 +11,7 @@ from .hd import (
     SessaoHD,
     SessaoParametro,
 )
+from .lme import ExameVinculado, Laudo, LaudoItem, RefPcdt, Termo
 
 __all__ = [
     "Base",
@@ -32,4 +33,9 @@ __all__ = [
     "SessaoHD",
     "SessaoParametro",
     "Intercorrencia",
+    "RefPcdt",
+    "Laudo",
+    "LaudoItem",
+    "ExameVinculado",
+    "Termo",
 ]

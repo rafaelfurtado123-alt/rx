@@ -9,6 +9,7 @@ import 'features/auth/two_factor_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/hd/hd_prescription_screen.dart';
 import 'features/hd/session_screen.dart';
+import 'features/lme/lme_screen.dart';
 import 'features/patients/patient_detail_screen.dart';
 import 'features/patients/patients_list_screen.dart';
 import 'features/patients/soap_editor_screen.dart';
@@ -65,6 +66,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/pacientes/:id/sessao',
         builder: (_, s) => SessionScreen(pacienteId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/pacientes/:id/lme',
+        builder: (_, s) => LmeScreen(pacienteId: s.pathParameters['id']!),
       ),
     ],
   );
