@@ -55,7 +55,8 @@ jobs:
           psql -h localhost -U nefron -d nefron -c \
             "create schema auth; create function auth.uid() returns uuid as 'select gen_random_uuid()' language sql stable;"
           for f in schema.sql auth_fastapi_columns.sql rls_fastapi_context.sql \
-                   seed.sql interacoes.sql escala.sql vidaas.sql receitas.sql; do
+                   seed.sql interacoes.sql escala.sql vidaas.sql receitas.sql \
+                   ambulatorio.sql; do
             echo "== db/$f =="
             psql -h localhost -U nefron -d nefron -v ON_ERROR_STOP=1 -f "db/$f"
           done

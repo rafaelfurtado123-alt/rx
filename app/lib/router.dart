@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'features/ambulatorio/ambulatorio_screen.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/select_context_screen.dart';
@@ -16,6 +17,7 @@ import 'features/lme/lme_screen.dart';
 import 'features/prescription/emar_screen.dart';
 import 'features/prescription/prescription_screen.dart';
 import 'features/patients/patient_detail_screen.dart';
+import 'features/patients/patient_form_screen.dart';
 import 'features/patients/patients_list_screen.dart';
 import 'features/patients/soap_editor_screen.dart';
 
@@ -58,6 +60,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/faturamento', builder: (_, __) => const FaturamentoScreen()),
       GoRoute(path: '/pacientes', builder: (_, __) => const PatientsListScreen()),
+      GoRoute(
+          path: '/pacientes/novo',
+          builder: (_, __) => const PatientFormScreen()),
+      GoRoute(
+          path: '/ambulatorio', builder: (_, __) => const AmbulatorioScreen()),
       GoRoute(
         path: '/pacientes/:id',
         builder: (_, s) =>

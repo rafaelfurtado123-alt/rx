@@ -133,7 +133,16 @@ class _HeaderChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    const segmentos = {
+      'conservador': 'Ambulatório conservador',
+      'hemodialise': 'Hemodiálise',
+      'dialise_peritoneal': 'Diálise peritoneal',
+      'transplante': 'Transplante',
+    };
     final chips = <Widget>[
+      if (header.segmento != null)
+        _chip(context, segmentos[header.segmento] ?? header.segmento!,
+            color: c.primary),
       if (header.idade != null) _chip(context, '${header.idade} anos'),
       if (header.estagioDrc != null) _chip(context, 'DRC E${header.estagioDrc}'),
       if (header.turnoDialise != null) _chip(context, header.turnoDialise!),

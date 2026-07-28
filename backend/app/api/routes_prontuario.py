@@ -11,8 +11,10 @@ from ..schemas.auth import CurrentUser
 from ..schemas.prontuario import (
     EvolucaoCreate,
     EvolucaoOut,
+    PacienteCreate,
     PacienteHeader,
     PacienteResumo,
+    PacienteUpdate,
     ResumoIARequest,
     ResumoIAResponse,
     SerieExame,
@@ -25,10 +27,38 @@ router = APIRouter(prefix="/pacientes", tags=["prontuario"])
 
 @router.get("", response_model=list[PacienteResumo])
 async def listar_pacientes(
+    segmento: str | None = None,
     user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_authed_session),
 ):
-    return await prontuario_service.listar_pacientes(session, str(user.unidade_id))
+    """Pacientes da unidade, com filtro opcional por segmento
+    (conservador | hemodialise | dialise_peritoneal | transplante)."""
+    return await prontuario_service.listar_pacientes(
+        session, str(user.unidade_id), segmento)
+
+
+@router.post("", response_model=PacienteHeader, status_code=201)
+async def criar_paciente(
+    body: PacienteCreate,
+    user: CurrentUser = Depends(
+        require_roles("medico", "enfermeiro", "administrativo", "admin")),
+    session: AsyncSession = Depends(get_authed_session),
+):
+    """Cadastro do paciente renal (ambulatório conservador ou hemodiálise)."""
+    return await prontuario_service.criar_paciente(session, body, user)
+
+
+@router.patch("/{paciente_id}", response_model=PacienteHeader)
+async def atualizar_paciente(
+    paciente_id: uuid.UUID,
+    body: PacienteUpdate,
+    _: CurrentUser = Depends(
+        require_roles("medico", "enfermeiro", "administrativo", "admin")),
+    session: AsyncSession = Depends(get_authed_session),
+):
+    """Atualiza o cadastro — inclui a transição conservador → hemodiálise."""
+    return await prontuario_service.atualizar_paciente(
+        session, str(paciente_id), body)
 
 
 @router.get("/{paciente_id}", response_model=PacienteHeader)
@@ -74,9 +104,9 @@ async def listar_evolucoes(
 async def criar_evolucao(
     paciente_id: uuid.UUID,
     body: EvolucaoCreate,
-    # Só perfis assistenciais registram evolução (RBAC)
+    # Perfis assistenciais registram evolução (inclui equipe multiprofissional)
     user: CurrentUser = Depends(
-        require_roles("medico", "enfermeiro", "tecnico", "admin")
+        require_roles("medico", "enfermeiro", "tecnico", "equipe_multi", "admin")
     ),
     session: AsyncSession = Depends(get_authed_session),
 ):
@@ -87,7 +117,8 @@ async def criar_evolucao(
 async def resumo_ia(
     paciente_id: uuid.UUID,
     body: ResumoIARequest,
-    _: CurrentUser = Depends(require_roles("medico", "enfermeiro", "admin")),
+    _: CurrentUser = Depends(
+        require_roles("medico", "enfermeiro", "equipe_multi", "admin")),
     session: AsyncSession = Depends(get_authed_session),
 ):
     """Rascunho de sumarização por IA — SEMPRE revisável antes de assinar."""

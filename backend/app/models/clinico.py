@@ -97,6 +97,27 @@ class Alergia(Base):
 STATUS_EMAR = ("previsto", "administrado", "recusado", "omitido", "adiado")
 
 
+class ConsultaAgendada(Base):
+    """Consulta do ambulatório conservador (agenda nefrológica)."""
+    __tablename__ = "consulta_agendada"
+    __table_args__ = {"schema": "clinico"}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True,
+                                          default=uuid.uuid4)
+    paciente_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("core.paciente.id"))
+    unidade_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("core.unidade.id"))
+    profissional_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("core.profissional.id")
+    )
+    data_hora: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True))
+    tipo: Mapped[str] = mapped_column(Text, default="retorno")
+    status: Mapped[str] = mapped_column(Text, default="agendada")
+    observacao: Mapped[str | None] = mapped_column(Text)
+    episodio_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinico.episodio.id")
+    )
+
+
 class Emar(Base):
     """Checagem eletrônica de administração de medicamentos (eMAR)."""
     __tablename__ = "emar"

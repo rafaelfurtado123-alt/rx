@@ -8,10 +8,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.clinico import Alergia, Episodio, Evolucao, ExameResultado, RefExame
-from ..models.core import Paciente
+from ..models.core import SEGMENTOS, Paciente, PacienteUnidade
+from ..schemas.auth import CurrentUser
 from ..schemas.prontuario import (
+    PacienteCreate,
     PacienteHeader,
     PacienteResumo,
+    PacienteUpdate,
     PontoExame,
     SerieExame,
     TimelineItem,
@@ -43,18 +46,72 @@ def _idade(nasc: dt.date | None) -> int | None:
     return hoje.year - nasc.year - ((hoje.month, hoje.day) < (nasc.month, nasc.day))
 
 
-async def listar_pacientes(session: AsyncSession, unidade_id: str) -> list[PacienteResumo]:
-    """Pacientes ativos (RLS já filtra pela unidade do contexto)."""
-    rows = await session.scalars(
-        select(Paciente).where(Paciente.deleted_at.is_(None)).order_by(Paciente.nome)
-    )
+async def listar_pacientes(
+    session: AsyncSession, unidade_id: str, segmento: str | None = None
+) -> list[PacienteResumo]:
+    """Pacientes ativos (RLS já filtra pela unidade), opcionalmente por segmento."""
+    stmt = select(Paciente).where(Paciente.deleted_at.is_(None))
+    if segmento is not None:
+        if segmento not in SEGMENTOS:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "segmento inválido")
+        stmt = stmt.where(Paciente.segmento == segmento)
+    rows = await session.scalars(stmt.order_by(Paciente.nome))
     return [
         PacienteResumo(
-            id=p.id, nome=p.nome, cns=p.cns,
-            estagio_drc=p.estagio_drc, turno_dialise=p.turno_dialise,
+            id=p.id, nome=p.nome, cns=p.cns, estagio_drc=p.estagio_drc,
+            segmento=p.segmento, turno_dialise=p.turno_dialise,
         )
         for p in rows
     ]
+
+
+def _validar_segmento_trs(segmento: str, inicio_trs, turno) -> None:
+    if segmento not in SEGMENTOS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            f"segmento inválido (use: {', '.join(SEGMENTOS)})")
+    if segmento == "hemodialise" and inicio_trs is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "informe inicio_trs para paciente em hemodiálise")
+
+
+async def criar_paciente(
+    session: AsyncSession, body: PacienteCreate, user: CurrentUser
+) -> PacienteHeader:
+    """Cadastro do paciente renal, vinculado à unidade ativa do profissional."""
+    _validar_segmento_trs(body.segmento, body.inicio_trs, body.turno_dialise)
+
+    paciente = Paciente(
+        nome=body.nome, nome_social=body.nome_social, cns=body.cns, cpf=body.cpf,
+        sexo=body.sexo or "nao_informado", data_nascimento=body.data_nascimento,
+        etiologia_drc=body.etiologia_drc, estagio_drc=body.estagio_drc,
+        segmento=body.segmento, inicio_trs=body.inicio_trs,
+        turno_dialise=body.turno_dialise,
+    )
+    session.add(paciente)
+    await session.flush()
+    session.add(PacienteUnidade(paciente_id=paciente.id,
+                                unidade_id=user.unidade_id))
+    await session.commit()
+    return await get_header(session, str(paciente.id))
+
+
+async def atualizar_paciente(
+    session: AsyncSession, paciente_id: str, body: PacienteUpdate
+) -> PacienteHeader:
+    """Atualização parcial do cadastro (inclui transição de segmento)."""
+    paciente = await session.get(Paciente, paciente_id)
+    if paciente is None or paciente.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "paciente não encontrado")
+
+    campos = body.model_dump(exclude_unset=True)
+    if "segmento" in campos:
+        inicio = campos.get("inicio_trs", paciente.inicio_trs)
+        turno = campos.get("turno_dialise", paciente.turno_dialise)
+        _validar_segmento_trs(campos["segmento"], inicio, turno)
+    for campo, valor in campos.items():
+        setattr(paciente, campo, valor)
+    await session.commit()
+    return await get_header(session, paciente_id)
 
 
 async def get_header(session: AsyncSession, paciente_id: str) -> PacienteHeader:
@@ -70,7 +127,7 @@ async def get_header(session: AsyncSession, paciente_id: str) -> PacienteHeader:
         id=p.id, nome=p.nome, nome_social=p.nome_social, cns=p.cns, cpf=p.cpf,
         sexo=p.sexo, data_nascimento=p.data_nascimento, idade=_idade(p.data_nascimento),
         etiologia_drc=p.etiologia_drc, estagio_drc=p.estagio_drc,
-        inicio_trs=p.inicio_trs, turno_dialise=p.turno_dialise,
+        segmento=p.segmento, inicio_trs=p.inicio_trs, turno_dialise=p.turno_dialise,
         alergias=list(alergias),
     )
 

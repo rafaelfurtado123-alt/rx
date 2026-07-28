@@ -71,6 +71,18 @@ def _por_perfil(
             ],
             [],
         )
+    if perfil == "equipe_multi":
+        return (
+            [
+                MetricCard(chave="pacientes", titulo="Pacientes da unidade",
+                           valor=total_pacientes),
+                MetricCard(chave="consultas_hoje", titulo="Consultas hoje", valor=0),
+                MetricCard(chave="evolucoes_pendentes",
+                           titulo="Evoluções a registrar", valor=0),
+                MetricCard(chave="interconsultas", titulo="Interconsultas", valor=0),
+            ],
+            [],
+        )
     if perfil == "administrativo":
         return (
             [

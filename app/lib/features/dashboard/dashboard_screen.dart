@@ -39,6 +39,11 @@ class DashboardScreen extends ConsumerWidget {
             onPressed: () => context.go('/agenda'),
           ),
           IconButton(
+            icon: const Icon(Icons.event_note_outlined),
+            tooltip: 'Ambulatório conservador',
+            onPressed: () => context.go('/ambulatorio'),
+          ),
+          IconButton(
             icon: const Icon(Icons.insights_outlined),
             tooltip: 'Relatórios',
             onPressed: () => context.go('/relatorios'),
@@ -92,6 +97,7 @@ class _RoleChip extends StatelessWidget {
     'enfermeiro': 'Enfermeiro',
     'tecnico': 'Técnico',
     'administrativo': 'Administrativo',
+    'equipe_multi': 'Equipe multi',
   };
   @override
   Widget build(BuildContext context) {

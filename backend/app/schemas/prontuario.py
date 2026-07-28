@@ -6,13 +6,47 @@ import uuid
 
 from pydantic import BaseModel, Field
 
-
 # ------------------------------- Paciente -------------------------------
+SEGMENTOS_VALIDOS = ("conservador", "hemodialise", "dialise_peritoneal", "transplante")
+
+
+class PacienteCreate(BaseModel):
+    """Cadastro do paciente renal — ambulatório conservador ou TRS."""
+    nome: str = Field(min_length=3)
+    nome_social: str | None = None
+    cns: str | None = Field(default=None, min_length=15, max_length=15)
+    cpf: str | None = Field(default=None, min_length=11, max_length=11)
+    sexo: str | None = None
+    data_nascimento: dt.date | None = None
+    etiologia_drc: str | None = None
+    estagio_drc: int | None = Field(default=None, ge=1, le=5)
+    segmento: str = "conservador"
+    inicio_trs: dt.date | None = None    # exigido quando segmento é TRS
+    turno_dialise: str | None = None
+
+
+class PacienteUpdate(BaseModel):
+    """Atualização parcial — inclui transição de segmento (ex.: conservador →
+    hemodiálise quando o paciente inicia TRS)."""
+    nome: str | None = None
+    nome_social: str | None = None
+    cns: str | None = None
+    cpf: str | None = None
+    sexo: str | None = None
+    data_nascimento: dt.date | None = None
+    etiologia_drc: str | None = None
+    estagio_drc: int | None = Field(default=None, ge=1, le=5)
+    segmento: str | None = None
+    inicio_trs: dt.date | None = None
+    turno_dialise: str | None = None
+
+
 class PacienteResumo(BaseModel):
     id: uuid.UUID
     nome: str
     cns: str | None = None
     estagio_drc: int | None = None
+    segmento: str | None = None
     turno_dialise: str | None = None
 
 
@@ -27,6 +61,7 @@ class PacienteHeader(BaseModel):
     idade: int | None = None
     etiologia_drc: str | None = None
     estagio_drc: int | None = None
+    segmento: str | None = None
     inicio_trs: dt.date | None = None
     turno_dialise: str | None = None
     alergias: list[str] = []

@@ -51,15 +51,43 @@ async def main() -> None:
 
         s.add(Vinculo(profissional_id=medico.id, unidade_id=unidade.id, papel="medico"))
 
+        # Um login demo por segmento (mesma senha) — enfermeiro, técnico e
+        # equipe multiprofissional
+        outros = [
+            ("Enf. Carlos Lima", "carlos@nefron.com.br", "COREN", "enfermeiro"),
+            ("Téc. Tânia Souza", "tania@nefron.com.br", "COREN", "tecnico"),
+            ("Nut. Júlia Prado", "julia@nefron.com.br", "CRN", "equipe_multi"),
+        ]
+        for nome, email, conselho, papel in outros:
+            prof = Profissional(nome=nome, email=email, conselho_tipo=conselho,
+                                senha_hash=hash_password(DEMO_SENHA),
+                                totp_ativo=False)
+            s.add(prof)
+            await s.flush()
+            s.add(Vinculo(profissional_id=prof.id, unidade_id=unidade.id,
+                          papel=papel))
+
         paciente = Paciente(
             id=uuid.uuid4(), nome="Maria Silva", cns="700000000000001",
             sexo="feminino", data_nascimento=dt.date(1967, 3, 12),
             etiologia_drc="Nefropatia diabética", estagio_drc=5,
+            segmento="hemodialise",
             inicio_trs=dt.date(2022, 6, 1), turno_dialise="manha",
         )
         s.add(paciente)
         await s.flush()
         s.add(PacienteUnidade(paciente_id=paciente.id, unidade_id=unidade.id))
+
+        # Paciente do ambulatório conservador (estágio 4 — candidato a preparo TRS)
+        conservador = Paciente(
+            id=uuid.uuid4(), nome="João Pereira", cns="700000000000002",
+            sexo="masculino", data_nascimento=dt.date(1955, 9, 2),
+            etiologia_drc="Hipertensão arterial", estagio_drc=4,
+            segmento="conservador",
+        )
+        s.add(conservador)
+        await s.flush()
+        s.add(PacienteUnidade(paciente_id=conservador.id, unidade_id=unidade.id))
 
         # Série de Hemoglobina (mostra tendência de queda / fora da meta) — o seed.sql
         # deve ter sido aplicado (ref.exame com código 'HB').

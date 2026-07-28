@@ -1,5 +1,13 @@
 from .base import Base
-from .clinico import Alergia, Emar, Episodio, Evolucao, ExameResultado, RefExame
+from .clinico import (
+    Alergia,
+    ConsultaAgendada,
+    Emar,
+    Episodio,
+    Evolucao,
+    ExameResultado,
+    RefExame,
+)
 from .core import Paciente, PacienteUnidade, Profissional, Unidade, Vinculo
 from .fatura import Apac, Conta, ContaItem, RefSigtap
 from .hd import (
@@ -29,6 +37,7 @@ __all__ = [
     "ExameResultado",
     "Alergia",
     "Emar",
+    "ConsultaAgendada",
     "RefExame",
     "RefInteracao",
     "Prescricao",

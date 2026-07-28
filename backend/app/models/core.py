@@ -11,8 +11,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
 
-PAPEIS = ("medico", "enfermeiro", "tecnico", "administrativo", "admin", "auditor", "paciente")
+PAPEIS = ("medico", "enfermeiro", "tecnico", "administrativo", "admin", "auditor",
+          "paciente", "equipe_multi")
 SEXOS = ("masculino", "feminino", "intersexo", "nao_informado")
+SEGMENTOS = ("conservador", "hemodialise", "dialise_peritoneal", "transplante")
 
 
 class Unidade(Base):
@@ -92,6 +94,8 @@ class Paciente(Base):
     data_nascimento: Mapped[dt.date | None] = mapped_column(Date)
     etiologia_drc: Mapped[str | None] = mapped_column(Text)
     estagio_drc: Mapped[int | None] = mapped_column()
+    # Segmento de cuidado: ambulatório conservador × TRS (HD/DP) × transplante
+    segmento: Mapped[str] = mapped_column(Text, default="hemodialise")
     inicio_trs: Mapped[dt.date | None] = mapped_column(Date)
     turno_dialise: Mapped[str | None] = mapped_column(Text)
     deleted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))

@@ -84,8 +84,9 @@ rx/
 - [x] **Etapa 8 — Escala de diálise + Relatórios/Censo/Indicadores + Faturamento SUS (produção/APAC/CSV)**
 - [x] **Etapa 9 — Assinatura ICP-Brasil em nuvem via VIDaaS/CRM Digital (`docs/07`)**
 - [x] **Etapa 10 — Login por certificado digital + receitas (simples e controle especial) via VIDaaS**
+- [x] **Etapa 11 — Ambulatório conservador + cadastro de pacientes por segmento + login segmentado (equipe multi)**
 
-**Todos os módulos obrigatórios do plano original estão concluídos.** Suíte de testes: 58/58 em PostgreSQL 16 real · 48 rotas de API.
+**Todos os módulos obrigatórios do plano original estão concluídos.** Suíte de testes: 64/64 em PostgreSQL 16 real · 52 rotas de API.
 
 Consulte `docs/04-roadmap.md` para o plano completo.
 

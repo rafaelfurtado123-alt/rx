@@ -54,6 +54,7 @@ psql "$DB" -f ../db/interacoes.sql
 psql "$DB" -f ../db/escala.sql
 psql "$DB" -f ../db/vidaas.sql
 psql "$DB" -f ../db/receitas.sql
+psql "$DB" -f ../db/ambulatorio.sql
 python -m scripts.seed_demo          # usuário demo
 
 cp .env.example .env                 # ajuste NEFRON_DATABASE_URL/JWT_SECRET

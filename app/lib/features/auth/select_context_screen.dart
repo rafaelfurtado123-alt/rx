@@ -16,6 +16,7 @@ class SelectContextScreen extends ConsumerWidget {
     'administrativo': 'Administrativo',
     'admin': 'Administrador',
     'auditor': 'Auditor',
+    'equipe_multi': 'Equipe multiprofissional',
   };
 
   @override

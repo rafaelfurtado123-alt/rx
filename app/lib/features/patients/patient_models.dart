@@ -5,15 +5,22 @@ class PacienteResumo {
   final String nome;
   final String? cns;
   final int? estagioDrc;
+  final String? segmento;
   final String? turnoDialise;
   const PacienteResumo(
-      {required this.id, required this.nome, this.cns, this.estagioDrc, this.turnoDialise});
+      {required this.id,
+      required this.nome,
+      this.cns,
+      this.estagioDrc,
+      this.segmento,
+      this.turnoDialise});
 
   factory PacienteResumo.fromJson(Map<String, dynamic> j) => PacienteResumo(
         id: j['id'] as String,
         nome: j['nome'] as String,
         cns: j['cns'] as String?,
         estagioDrc: j['estagio_drc'] as int?,
+        segmento: j['segmento'] as String?,
         turnoDialise: j['turno_dialise'] as String?,
       );
 }
@@ -26,6 +33,7 @@ class PacienteHeader {
   final String? sexo;
   final int? estagioDrc;
   final String? etiologiaDrc;
+  final String? segmento;
   final String? turnoDialise;
   final List<String> alergias;
   const PacienteHeader({
@@ -36,6 +44,7 @@ class PacienteHeader {
     this.sexo,
     this.estagioDrc,
     this.etiologiaDrc,
+    this.segmento,
     this.turnoDialise,
     this.alergias = const [],
   });
@@ -48,6 +57,7 @@ class PacienteHeader {
         sexo: j['sexo'] as String?,
         estagioDrc: j['estagio_drc'] as int?,
         etiologiaDrc: j['etiologia_drc'] as String?,
+        segmento: j['segmento'] as String?,
         turnoDialise: j['turno_dialise'] as String?,
         alergias: (j['alergias'] as List?)?.cast<String>() ?? const [],
       );
