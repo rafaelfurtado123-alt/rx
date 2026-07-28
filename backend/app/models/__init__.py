@@ -12,6 +12,8 @@ from .hd import (
     SessaoHD,
     SessaoParametro,
 )
+from .fatura import Apac, Conta, ContaItem, RefSigtap
+from .hd import Escala
 from .lme import ExameVinculado, Laudo, LaudoItem, RefPcdt, Termo
 
 __all__ = [
@@ -41,4 +43,9 @@ __all__ = [
     "LaudoItem",
     "ExameVinculado",
     "Termo",
+    "Escala",
+    "RefSigtap",
+    "Conta",
+    "ContaItem",
+    "Apac",
 ]

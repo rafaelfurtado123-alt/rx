@@ -81,8 +81,9 @@ rx/
 - [x] **Etapa 5 — Prescrição de HD nível Tasy + Módulo de Sessão (recepção → monitor → adequação)**
 - [x] **Etapa 6 — LME Inteligente (motor PCDT, autopreenchimento, PDF + TER, validade 90d, renovação 1 clique)**
 - [x] **Etapa 7 — Interação medicamentosa (base de pares) + eMAR + tela de prescrição geral**
+- [x] **Etapa 8 — Escala de diálise + Relatórios/Censo/Indicadores + Faturamento SUS (produção/APAC/CSV)**
 
-**Todas as 6 etapas do plano original estão concluídas** (+ Etapa 7 de complementos do módulo de prescrição). Suíte de testes: 42/42 em PostgreSQL 16 real.
+**Todos os módulos obrigatórios do plano original estão concluídos.** Suíte de testes: 49/49 em PostgreSQL 16 real · 38 rotas de API.
 
 Consulte `docs/04-roadmap.md` para o plano completo.
 

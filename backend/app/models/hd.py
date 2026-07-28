@@ -4,9 +4,18 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from sqlalchemy import Boolean, Computed, DateTime, ForeignKey, Integer, Numeric, Text
+from sqlalchemy import (
+    Boolean,
+    Computed,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    SmallInteger,
+    Text,
+)
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
@@ -219,6 +228,21 @@ class SessaoParametro(Base):
     fluxo_uf: Mapped[float | None] = mapped_column(Numeric)
     condutividade: Mapped[float | None] = mapped_column(Numeric)
     temperatura: Mapped[float | None] = mapped_column(Numeric)
+
+
+class Escala(Base):
+    """Vaga recorrente do paciente na sala de diálise (turno + dias + máquina)."""
+    __tablename__ = "escala"
+    __table_args__ = {"schema": "hd"}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True,
+                                          default=uuid.uuid4)
+    paciente_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("core.paciente.id"))
+    unidade_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("core.unidade.id"))
+    turno: Mapped[str] = mapped_column(Text)          # manha | tarde | noite
+    dias_semana: Mapped[list[int]] = mapped_column(ARRAY(SmallInteger))  # ISO 1..7
+    maquina: Mapped[str | None] = mapped_column(Text)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class Intercorrencia(Base):

@@ -7,6 +7,9 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/select_context_screen.dart';
 import 'features/auth/two_factor_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
+import 'features/gestao/agenda_screen.dart';
+import 'features/gestao/faturamento_screen.dart';
+import 'features/gestao/relatorios_screen.dart';
 import 'features/hd/hd_prescription_screen.dart';
 import 'features/hd/session_screen.dart';
 import 'features/lme/lme_screen.dart';
@@ -50,6 +53,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/select-context', builder: (_, __) => const SelectContextScreen()),
       GoRoute(path: '/dashboard', builder: (_, __) => const DashboardScreen()),
+      GoRoute(path: '/agenda', builder: (_, __) => const AgendaScreen()),
+      GoRoute(path: '/relatorios', builder: (_, __) => const RelatoriosScreen()),
+      GoRoute(
+          path: '/faturamento', builder: (_, __) => const FaturamentoScreen()),
       GoRoute(path: '/pacientes', builder: (_, __) => const PatientsListScreen()),
       GoRoute(
         path: '/pacientes/:id',

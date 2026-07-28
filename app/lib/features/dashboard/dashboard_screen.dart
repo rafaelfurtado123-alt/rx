@@ -34,8 +34,19 @@ class DashboardScreen extends ConsumerWidget {
             onPressed: () => context.go('/pacientes'),
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(dashboardProvider),
+            icon: const Icon(Icons.calendar_month_outlined),
+            tooltip: 'Escala de diálise',
+            onPressed: () => context.go('/agenda'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.insights_outlined),
+            tooltip: 'Relatórios',
+            onPressed: () => context.go('/relatorios'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.receipt_long_outlined),
+            tooltip: 'Faturamento',
+            onPressed: () => context.go('/faturamento'),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
