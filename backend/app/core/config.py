@@ -27,6 +27,17 @@ class Settings(BaseSettings):
     # 2FA
     totp_issuer: str = "Nefron"
 
+    # VIDaaS (certificado em nuvem ICP-Brasil — Valid / CRM Digital)
+    # Padrão PSC ICP-Brasil: OAuth2 authorization_code + PKCE, escopo de sessão
+    # de assinatura. Sem client_id configurado (ou com vidaas_mock=true), o
+    # sistema usa o provedor SIMULADO — útil em dev/teste e homologação.
+    vidaas_base_url: str = "https://certificado.vidaas.com.br"
+    vidaas_client_id: str = ""
+    vidaas_client_secret: str = ""
+    vidaas_redirect_uri: str = "http://localhost:8000/api/v1/assinatura/vidaas/callback"
+    vidaas_mock: bool = False
+    vidaas_token_ttl_min: int = 30  # janela p/ usar a sessão de assinatura
+
     # CORS
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8080"]
 

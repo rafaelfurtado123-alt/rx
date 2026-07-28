@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from . import (
+    routes_assinatura,
     routes_auth,
     routes_dashboard,
     routes_gestao,
@@ -19,3 +20,4 @@ api_router.include_router(routes_prontuario.router)
 api_router.include_router(routes_hd.router)
 api_router.include_router(routes_lme.router)
 api_router.include_router(routes_gestao.router)
+api_router.include_router(routes_assinatura.router)

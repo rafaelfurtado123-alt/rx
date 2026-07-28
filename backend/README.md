@@ -52,6 +52,7 @@ psql "$DB" -f ../db/rls_fastapi_context.sql
 psql "$DB" -f ../db/seed.sql
 psql "$DB" -f ../db/interacoes.sql
 psql "$DB" -f ../db/escala.sql
+psql "$DB" -f ../db/vidaas.sql
 python -m scripts.seed_demo          # usuário demo
 
 cp .env.example .env                 # ajuste NEFRON_DATABASE_URL/JWT_SECRET

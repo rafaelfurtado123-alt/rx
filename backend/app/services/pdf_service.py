@@ -62,9 +62,12 @@ def gerar_pdf_lme(
 ) -> bytes:
     """PDF oficial do LME."""
     buf = BytesIO()
+    # invariant=1 → CreationDate/ID determinísticos: o MESMO laudo gera os
+    # MESMOS bytes, essencial para a assinatura destacada ser verificável.
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm,
                             bottomMargin=18 * mm, leftMargin=16 * mm,
-                            rightMargin=16 * mm, title=f"LME {laudo.id}")
+                            rightMargin=16 * mm, title=f"LME {laudo.id}",
+                            invariant=1)
     s = _styles()
     story: list = []
 
@@ -136,10 +139,11 @@ def gerar_pdf_lme(
     story.append(Spacer(1, 16 * mm))
     story.append(HRFlowable(width="60%", color=colors.grey, thickness=0.5))
     story.append(Paragraph(f"{medico.nome} — {conselho}", s["corpo"]))
+    # Rodapé sem timestamp de geração (o documento precisa ser determinístico
+    # para a assinatura destacada); a data oficial é a de emissão.
     story.append(Paragraph(
-        f"Documento gerado eletronicamente pelo sistema Néfron em "
-        f"{dt.datetime.now(dt.timezone.utc).strftime('%d/%m/%Y %H:%M')} UTC. "
-        f"Identificador: {laudo.id}", s["sub"]))
+        f"Documento gerado eletronicamente pelo sistema Néfron. "
+        f"Emissão: {emitido}. Identificador: {laudo.id}", s["sub"]))
 
     doc.build(story)
     return buf.getvalue()
@@ -151,7 +155,7 @@ def gerar_pdf_termo(texto: str, paciente: Paciente, medicamento: str,
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm,
                             bottomMargin=18 * mm, leftMargin=16 * mm,
-                            rightMargin=16 * mm, title="TER")
+                            rightMargin=16 * mm, title="TER", invariant=1)
     s = _styles()
     story: list = [
         Paragraph("TERMO DE ESCLARECIMENTO E RESPONSABILIDADE", s["titulo"]),

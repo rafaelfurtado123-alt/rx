@@ -44,6 +44,35 @@ class LmeRepository {
   /// URL do PDF (aberta no navegador/visualizador com o token atual).
   String pdfUrl(String laudoId) =>
       '${_ref.read(apiClientProvider).dio.options.baseUrl}/api/v1/lme/$laudoId/pdf';
+
+  // ------------------- Assinatura ICP-Brasil (VIDaaS) -------------------
+
+  /// Inicia a autorização no VIDaaS; devolve {state, authorization_url, mock}.
+  Future<Map<String, dynamic>> vidaasAutorizar() async {
+    final r = await _ref
+        .read(apiClientProvider)
+        .dio
+        .post('/api/v1/assinatura/vidaas/autorizacao');
+    return r.data as Map<String, dynamic>;
+  }
+
+  /// Status da autorização: pendente | autorizada | expirada | erro.
+  Future<String> vidaasStatus(String state) async {
+    final r = await _ref
+        .read(apiClientProvider)
+        .dio
+        .get('/api/v1/assinatura/vidaas/autorizacao/$state');
+    return (r.data as Map<String, dynamic>)['status'] as String;
+  }
+
+  /// Assina o PDF do LME com o certificado em nuvem do médico.
+  Future<Map<String, dynamic>> vidaasAssinarLme(String laudoId) async {
+    final r = await _ref
+        .read(apiClientProvider)
+        .dio
+        .post('/api/v1/assinatura/vidaas/lme/$laudoId');
+    return r.data as Map<String, dynamic>;
+  }
 }
 
 final lmeRepositoryProvider = Provider<LmeRepository>((ref) => LmeRepository(ref));

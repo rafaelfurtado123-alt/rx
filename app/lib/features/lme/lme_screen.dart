@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
@@ -65,6 +68,59 @@ class _LmeScreenState extends ConsumerState<LmeScreen> {
     }
   }
 
+  /// Assinatura ICP-Brasil em nuvem (VIDaaS/CRM Digital):
+  /// autoriza no app do médico (QR/push) → assina o PDF do laudo.
+  Future<void> _assinarIcp(Laudo laudo) async {
+    final repo = ref.read(lmeRepositoryProvider);
+    Map<String, dynamic> auth;
+    try {
+      auth = await repo.vidaasAutorizar();
+    } catch (e) {
+      setState(() => _error = '$e');
+      return;
+    }
+    if (!mounted) return;
+
+    final state = auth['state'] as String;
+    final url = auth['authorization_url'] as String;
+    final isMock = auth['mock'] as bool? ?? false;
+
+    final autorizado = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _VidaasDialog(
+        authorizationUrl: url,
+        isMock: isMock,
+        pollStatus: () => repo.vidaasStatus(state),
+        simularAprovacao: isMock
+            ? () => ref.read(apiClientProvider).dio.get(
+                '/api/v1/assinatura/vidaas/callback',
+                queryParameters: {'state': state, 'code': 'DEMO'})
+            : null,
+      ),
+    );
+    if (autorizado != true || !mounted) return;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final resultado = await repo.vidaasAssinarLme(laudo.id);
+      ref.invalidate(lmesProvider(widget.pacienteId));
+      if (mounted) {
+        final cert = resultado['certificado'] as Map<String, dynamic>?;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('LME assinado com ICP-Brasil '
+                '(${cert?['origem'] ?? 'vidaas'}) ✓')));
+      }
+    } catch (e) {
+      setState(() => _error = '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _renovar(Laudo laudo) async {
     setState(() {
       _busy = true;
@@ -113,6 +169,7 @@ class _LmeScreenState extends ConsumerState<LmeScreen> {
               laudo: _emGeracao!,
               busy: _busy,
               onAssinar: () => _assinar(_emGeracao!),
+              onAssinarIcp: () => _assinarIcp(_emGeracao!),
               onFechar: () => setState(() => _emGeracao = null),
             ),
             const SizedBox(height: Gap.lg),
@@ -206,11 +263,13 @@ class _RevisaoCard extends StatelessWidget {
   final Laudo laudo;
   final bool busy;
   final VoidCallback onAssinar;
+  final VoidCallback? onAssinarIcp;
   final VoidCallback onFechar;
   const _RevisaoCard(
       {required this.laudo,
       required this.busy,
       required this.onAssinar,
+      this.onAssinarIcp,
       required this.onFechar});
 
   @override
@@ -276,13 +335,126 @@ class _RevisaoCard extends StatelessWidget {
                   ? 'Assinar e emitir (validade 90 dias)'
                   : 'Resolva as pendências para emitir'),
             ),
-          if (laudo.vigente)
+          if (laudo.vigente) ...[
             StatusPill(
                 label:
                     'Vigente — ${laudo.diasRestantes} dias restantes',
                 status: 'ok'),
+            if (onAssinarIcp != null) ...[
+              const SizedBox(height: Gap.md),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.verified_outlined),
+                onPressed: busy ? null : onAssinarIcp,
+                label: const Text('Assinar com ICP-Brasil (VIDaaS)'),
+              ),
+            ],
+          ],
         ],
       ),
+    );
+  }
+}
+
+/// Diálogo de autorização no VIDaaS: QR/link + polling do status.
+class _VidaasDialog extends StatefulWidget {
+  final String authorizationUrl;
+  final bool isMock;
+  final Future<String> Function() pollStatus;
+  final Future<void> Function()? simularAprovacao;
+  const _VidaasDialog({
+    required this.authorizationUrl,
+    required this.isMock,
+    required this.pollStatus,
+    this.simularAprovacao,
+  });
+
+  @override
+  State<_VidaasDialog> createState() => _VidaasDialogState();
+}
+
+class _VidaasDialogState extends State<_VidaasDialog> {
+  Timer? _timer;
+  String _status = 'pendente';
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 2), (_) => _verificar());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _verificar() async {
+    try {
+      final s = await widget.pollStatus();
+      if (!mounted) return;
+      setState(() => _status = s);
+      if (s == 'autorizada') {
+        _timer?.cancel();
+        Navigator.pop(context, true);
+      }
+    } catch (_) {
+      // erro transitório de rede: mantém o polling
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AlertDialog(
+      title: const Text('Autorize no app VIDaaS'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Aprove a sessão de assinatura no aplicativo VIDaaS '
+            '(certificado do CRM Digital) escaneando o QR code ou '
+            'abrindo o link.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: Gap.lg),
+          Container(
+            padding: const EdgeInsets.all(Gap.md),
+            decoration: const BoxDecoration(
+                color: Colors.white, borderRadius: Radii.rMd),
+            child: QrImageView(data: widget.authorizationUrl, size: 160),
+          ),
+          const SizedBox(height: Gap.sm),
+          SelectableText(widget.authorizationUrl,
+              maxLines: 2,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: c.textSecondary)),
+          const SizedBox(height: Gap.md),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            SizedBox(
+                height: 14,
+                width: 14,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: c.primary)),
+            const SizedBox(width: Gap.sm),
+            Text('Aguardando autorização… ($_status)',
+                style: Theme.of(context).textTheme.bodySmall),
+          ]),
+          if (widget.isMock && widget.simularAprovacao != null) ...[
+            const SizedBox(height: Gap.md),
+            TextButton(
+              onPressed: () => widget.simularAprovacao!(),
+              child: const Text('Ambiente de demonstração: simular aprovação'),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar')),
+      ],
     );
   }
 }

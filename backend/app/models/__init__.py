@@ -15,6 +15,7 @@ from .hd import (
 from .fatura import Apac, Conta, ContaItem, RefSigtap
 from .hd import Escala
 from .lme import ExameVinculado, Laudo, LaudoItem, RefPcdt, Termo
+from .seguranca import Assinatura, VidaasSessao
 
 __all__ = [
     "Base",
@@ -48,4 +49,6 @@ __all__ = [
     "Conta",
     "ContaItem",
     "Apac",
+    "Assinatura",
+    "VidaasSessao",
 ]
