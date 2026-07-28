@@ -168,7 +168,9 @@ async def timeline(session: AsyncSession, paciente_id: str, limite: int = 50) ->
         .order_by(ExameResultado.data_coleta.desc()).limit(limite)
     )
     for res, ref in exames:
-        valor = f"{res.valor}" if res.valor is not None else (res.valor_texto or "-")
+        # :g normaliza o Decimal vindo do banco (evita “9.4000…0355” de floats)
+        valor = f"{float(res.valor):g}" if res.valor is not None \
+            else (res.valor_texto or "-")
         flag = " (fora da faixa)" if res.fora_faixa else ""
         itens.append(TimelineItem(
             tipo="exame", subtipo=ref.codigo,

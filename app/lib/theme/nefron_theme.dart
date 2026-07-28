@@ -27,6 +27,7 @@ abstract final class NefronTheme {
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: c.bgGradientBottom,
+      fontFamily: 'IBMPlexSans',
       textTheme: NefronType.textTheme(c.textPrimary, c.textSecondary),
       extensions: [c],
       splashFactory: InkSparkle.splashFactory,

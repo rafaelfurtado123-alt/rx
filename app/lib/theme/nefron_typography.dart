@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Tipografia do Design System `néfron·`.
 ///
-/// Inter para UI; IBM Plex Mono (tabular) para números clínicos — doses,
-/// resultados de exames e Kt/V — de modo que colunas numéricas alinhem.
+/// IBM Plex Sans para UI e IBM Plex Mono (tabular) para números clínicos —
+/// doses, resultados de exames e Kt/V — de modo que colunas numéricas alinhem.
+/// As fontes são EMPACOTADAS como assets (pubspec.yaml): nada é buscado em CDN
+/// em tempo de execução — requisito de disponibilidade offline e LGPD.
 abstract final class NefronType {
+  static const String _sans = 'IBMPlexSans';
+  static const String _mono = 'IBMPlexMono';
+
   /// Estilos de texto da UI, tintados com [color].
   static TextTheme textTheme(Color color, Color secondary) {
-    final base = GoogleFonts.interTextTheme();
-    return base.copyWith(
-      displaySmall: base.displaySmall?.copyWith(
-          fontSize: 32, fontWeight: FontWeight.w700, color: color),
-      titleLarge: base.titleLarge?.copyWith(
-          fontSize: 22, fontWeight: FontWeight.w600, color: color),
-      titleMedium: base.titleMedium?.copyWith(
-          fontSize: 18, fontWeight: FontWeight.w600, color: color),
-      bodyLarge: base.bodyLarge?.copyWith(fontSize: 15, color: color),
-      bodyMedium: base.bodyMedium?.copyWith(fontSize: 15, color: color),
-      labelLarge: base.labelLarge?.copyWith(
-          fontSize: 13, fontWeight: FontWeight.w500, color: color),
-      bodySmall: base.bodySmall?.copyWith(fontSize: 12, color: secondary),
+    TextStyle s(double size, FontWeight weight, Color cor) => TextStyle(
+        fontFamily: _sans, fontSize: size, fontWeight: weight, color: cor);
+    return TextTheme(
+      displaySmall: s(32, FontWeight.w700, color),
+      titleLarge: s(22, FontWeight.w600, color),
+      titleMedium: s(18, FontWeight.w600, color),
+      bodyLarge: s(15, FontWeight.w400, color),
+      bodyMedium: s(15, FontWeight.w400, color),
+      labelLarge: s(13, FontWeight.w500, color),
+      bodySmall: s(12, FontWeight.w400, secondary),
     );
   }
 
@@ -30,7 +31,8 @@ abstract final class NefronType {
     double size = 15,
     FontWeight weight = FontWeight.w500,
   }) {
-    return GoogleFonts.ibmPlexMono(
+    return TextStyle(
+      fontFamily: _mono,
       fontSize: size,
       fontWeight: weight,
       color: color,
