@@ -1,8 +1,10 @@
 name: CI
 
+# push apenas no main (pós-merge); PRs cobrem os branches de trabalho —
+# evita execução duplicada quando os dois gatilhos disparariam juntos.
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
 
 jobs:
