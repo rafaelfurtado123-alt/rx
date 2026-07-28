@@ -100,6 +100,32 @@ class PrescricaoHDOut(BaseModel):
     alertas: list[AlertaItem] = []
 
 
+# ------------------------- eMAR -------------------------
+class EmarAgendarRequest(BaseModel):
+    prescricao_item_id: uuid.UUID
+    horarios: list[dt.datetime] = Field(min_length=1)
+
+
+class EmarRegistrarRequest(BaseModel):
+    status: str  # 'administrado' | 'recusado' | 'omitido' | 'adiado'
+    lote: str | None = None
+    observacao: str | None = None
+
+
+class EmarOut(BaseModel):
+    id: uuid.UUID
+    prescricao_item_id: uuid.UUID
+    medicamento: str | None
+    dose: float | None
+    unidade_dose: str | None
+    via: str | None
+    horario_previsto: dt.datetime
+    horario_realizado: dt.datetime | None
+    status: str
+    lote: str | None
+    observacao: str | None
+
+
 # ------------------------- Acesso vascular -------------------------
 class AcessoCreate(BaseModel):
     tipo: str

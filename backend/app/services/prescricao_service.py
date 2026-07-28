@@ -5,10 +5,13 @@ Checagens em tempo real (nível Tasy):
   * Dose máxima — compara com `ref.medicamento.dose_maxima_dia`.
   * Ajuste renal — sugere ajuste pela faixa de TFG do paciente (`ajuste_renal` JSONB:
     lista de {tfg_max, ajuste} avaliada da menor faixa para a maior).
-  * (Interação medicamentosa: estrutura pronta em `alertas`; base de pares na fase 2.)
+  * Interação medicamentosa — base de pares (`ref.interacao`), checada entre os
+    itens da MESMA prescrição e contra as prescrições ATIVAS do paciente.
+    'contraindicada' bloqueia; 'grave'/'moderada' alertam; 'leve' informa.
 
 Alertas de gravidade 'bloqueio' impedem a assinatura — a prescrição só pode ser
-salva como rascunho até o prescritor resolver o problema.
+salva como rascunho até o prescritor resolver o problema. Ao assinar, o eMAR é
+gerado automaticamente para frequências reconhecidas (ver domain/horarios).
 """
 from __future__ import annotations
 
@@ -18,10 +21,18 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.clinico import Alergia, ExameResultado, RefExame
-from ..models.hd import Prescricao, PrescricaoItem, RefMedicamento
+from ..domain.horarios import gerar_horarios
+from ..models.clinico import Alergia, Emar, ExameResultado, RefExame
+from ..models.hd import Prescricao, PrescricaoItem, RefInteracao, RefMedicamento
 from ..schemas.auth import CurrentUser
 from ..schemas.hd import AlertaItem, ItemCreate, ItemOut, PrescricaoCreate, PrescricaoOut
+
+_GRAVIDADE_ALERTA = {
+    "contraindicada": "bloqueio",
+    "grave": "alerta",
+    "moderada": "alerta",
+    "leve": "info",
+}
 
 
 async def _tfg_recente(session: AsyncSession, paciente_id: str) -> float | None:
@@ -106,6 +117,70 @@ async def _checar_item(
     return alertas, ajuste_aplicado
 
 
+def _match_principio(principio: str, termo: str) -> bool:
+    """Match tolerante entre princípio ativo e termo da base de interações."""
+    a, b = principio.lower().strip(), termo.lower().strip()
+    return a in b or b in a
+
+
+async def _principios_ativos_vigentes(
+    session: AsyncSession, paciente_id: str
+) -> list[str]:
+    """Princípios ativos das prescrições ATIVAS (assinadas) do paciente."""
+    rows = await session.execute(
+        select(RefMedicamento.principio_ativo)
+        .join(PrescricaoItem, PrescricaoItem.medicamento_id == RefMedicamento.id)
+        .join(Prescricao, Prescricao.id == PrescricaoItem.prescricao_id)
+        .where(Prescricao.paciente_id == paciente_id, Prescricao.status == "ativa")
+    )
+    return [r[0] for r in rows]
+
+
+async def _checar_interacoes(
+    session: AsyncSession,
+    principios_novos: list[str | None],
+    principios_atuais: list[str],
+) -> dict[int, list[AlertaItem]]:
+    """Cruza os itens novos entre si e contra o que o paciente já usa.
+
+    Retorna alertas por índice do item novo. Cada par da base é testado nos
+    dois sentidos (A×B e B×A).
+    """
+    pares = list(await session.scalars(select(RefInteracao)))
+    alertas: dict[int, list[AlertaItem]] = {}
+
+    def _registrar(idx: int, par: RefInteracao, outro: str, origem: str) -> None:
+        alertas.setdefault(idx, []).append(AlertaItem(
+            tipo="interacao",
+            gravidade=_GRAVIDADE_ALERTA.get(par.gravidade, "alerta"),
+            mensagem=(
+                f"Interação {par.gravidade} com {outro} ({origem}): "
+                f"{par.efeito or 'ver protocolo'}. "
+                f"{par.recomendacao or ''}".strip()
+            ),
+        ))
+
+    for i, principio in enumerate(principios_novos):
+        if principio is None:
+            continue
+        for par in pares:
+            lados = [(par.principio_a, par.principio_b),
+                     (par.principio_b, par.principio_a)]
+            for meu_lado, outro_lado in lados:
+                if not _match_principio(principio, meu_lado):
+                    continue
+                # contra os demais itens da mesma prescrição
+                for j, outro in enumerate(principios_novos):
+                    if j != i and outro is not None \
+                            and _match_principio(outro, outro_lado):
+                        _registrar(i, par, outro, "nesta prescrição")
+                # contra as prescrições ativas do paciente
+                for outro in principios_atuais:
+                    if _match_principio(outro, outro_lado):
+                        _registrar(i, par, outro, "em uso")
+    return alertas
+
+
 async def criar(
     session: AsyncSession, paciente_id: str, body: PrescricaoCreate, user: CurrentUser
 ) -> PrescricaoOut:
@@ -118,6 +193,19 @@ async def criar(
                               Alergia.ativo.is_(True))
     ))
     tfg = await _tfg_recente(session, paciente_id)
+
+    # Princípios ativos para a checagem de interações
+    principios_novos: list[str | None] = []
+    for item in body.itens:
+        if item.medicamento_id is None:
+            principios_novos.append(None)
+            continue
+        med = await session.get(RefMedicamento, item.medicamento_id)
+        if med is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "medicamento não catalogado")
+        principios_novos.append(med.principio_ativo)
+    principios_atuais = await _principios_ativos_vigentes(session, paciente_id)
+    interacoes = await _checar_interacoes(session, principios_novos, principios_atuais)
 
     presc = Prescricao(
         paciente_id=paciente_id,
@@ -132,6 +220,7 @@ async def criar(
     tem_bloqueio = False
     for ordem, item in enumerate(body.itens):
         alertas, ajuste = await _checar_item(session, paciente_id, item, alergias, tfg)
+        alertas.extend(interacoes.get(ordem, []))
         tem_bloqueio = tem_bloqueio or any(a.gravidade == "bloqueio" for a in alertas)
         row = PrescricaoItem(
             prescricao_id=presc.id,
@@ -167,6 +256,16 @@ async def criar(
             )
         presc.status = "ativa"
         presc.assinada_em = dt.datetime.now(dt.timezone.utc)
+
+        # eMAR automático para frequências reconhecidas (24h a partir de agora)
+        rows_itens = await session.scalars(
+            select(PrescricaoItem).where(PrescricaoItem.prescricao_id == presc.id))
+        for row in rows_itens:
+            for horario in gerar_horarios(row.frequencia, presc.assinada_em):
+                session.add(Emar(
+                    prescricao_item_id=row.id, paciente_id=paciente_id,
+                    horario_previsto=horario,
+                ))
 
     await session.commit()
     return PrescricaoOut(

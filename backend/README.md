@@ -50,6 +50,7 @@ psql "$DB" -f ../db/schema.sql
 psql "$DB" -f ../db/auth_fastapi_columns.sql
 psql "$DB" -f ../db/rls_fastapi_context.sql
 psql "$DB" -f ../db/seed.sql
+psql "$DB" -f ../db/interacoes.sql
 python -m scripts.seed_demo          # usuário demo
 
 cp .env.example .env                 # ajuste NEFRON_DATABASE_URL/JWT_SECRET

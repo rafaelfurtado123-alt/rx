@@ -36,6 +36,20 @@ class RefMedicamento(Base):
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class RefInteracao(Base):
+    """Par de interação medicamentosa (schema ref) — match por princípio ativo."""
+    __tablename__ = "interacao"
+    __table_args__ = {"schema": "ref"}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True,
+                                          default=uuid.uuid4)
+    principio_a: Mapped[str] = mapped_column(Text)
+    principio_b: Mapped[str] = mapped_column(Text)
+    gravidade: Mapped[str] = mapped_column(Text)  # contraindicada|grave|moderada|leve
+    efeito: Mapped[str | None] = mapped_column(Text)
+    recomendacao: Mapped[str | None] = mapped_column(Text)
+
+
 class Prescricao(Base):
     __tablename__ = "prescricao"
     __table_args__ = {"schema": "clinico"}

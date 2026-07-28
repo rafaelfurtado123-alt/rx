@@ -1,5 +1,5 @@
 from .base import Base
-from .clinico import Alergia, Episodio, Evolucao, ExameResultado, RefExame
+from .clinico import Alergia, Emar, Episodio, Evolucao, ExameResultado, RefExame
 from .core import Paciente, PacienteUnidade, Profissional, Unidade, Vinculo
 from .hd import (
     AcessoVascular,
@@ -7,6 +7,7 @@ from .hd import (
     Prescricao,
     PrescricaoHD,
     PrescricaoItem,
+    RefInteracao,
     RefMedicamento,
     SessaoHD,
     SessaoParametro,
@@ -24,7 +25,9 @@ __all__ = [
     "Evolucao",
     "ExameResultado",
     "Alergia",
+    "Emar",
     "RefExame",
+    "RefInteracao",
     "Prescricao",
     "PrescricaoItem",
     "RefMedicamento",

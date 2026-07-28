@@ -94,6 +94,35 @@ class Alergia(Base):
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+STATUS_EMAR = ("previsto", "administrado", "recusado", "omitido", "adiado")
+
+
+class Emar(Base):
+    """Checagem eletrônica de administração de medicamentos (eMAR)."""
+    __tablename__ = "emar"
+    __table_args__ = {"schema": "clinico"}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True,
+                                          default=uuid.uuid4)
+    prescricao_item_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("clinico.prescricao_item.id")
+    )
+    paciente_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("core.paciente.id"))
+    horario_previsto: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True))
+    horario_realizado: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    executante_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("core.profissional.id")
+    )
+    status: Mapped[str] = mapped_column(
+        SAEnum(*STATUS_EMAR, name="status_emar", schema="clinico", create_type=False),
+        default="previsto",
+    )
+    lote: Mapped[str | None] = mapped_column(Text)
+    observacao: Mapped[str | None] = mapped_column(Text)
+
+
 class RefExame(Base):
     """Catálogo de exames (schema ref) — usado para faixas de referência/gráficos."""
     __tablename__ = "exame"

@@ -81,10 +81,26 @@ class _QuickActions extends StatelessWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.medication_outlined),
+                title: const Text('Prescrição geral'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.go('/pacientes/$pacienteId/prescricao');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.water_drop_outlined),
                 title: const Text('Prescrição de HD'),
                 onTap: () {
                   Navigator.pop(ctx);
                   context.go('/pacientes/$pacienteId/prescricao-hd');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.checklist_outlined),
+                title: const Text('eMAR — administração'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.go('/pacientes/$pacienteId/emar');
                 },
               ),
               ListTile(

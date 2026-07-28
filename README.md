@@ -80,8 +80,9 @@ rx/
 - [x] **Etapa 4 — Prontuário + Evolução (timeline, SOAP+IA, gráficos de tendência, Kt/V)**
 - [x] **Etapa 5 — Prescrição de HD nível Tasy + Módulo de Sessão (recepção → monitor → adequação)**
 - [x] **Etapa 6 — LME Inteligente (motor PCDT, autopreenchimento, PDF + TER, validade 90d, renovação 1 clique)**
+- [x] **Etapa 7 — Interação medicamentosa (base de pares) + eMAR + tela de prescrição geral**
 
-**Todas as 6 etapas do plano original estão concluídas.** Suíte de testes: 31/31 em PostgreSQL 16 real.
+**Todas as 6 etapas do plano original estão concluídas** (+ Etapa 7 de complementos do módulo de prescrição). Suíte de testes: 42/42 em PostgreSQL 16 real.
 
 Consulte `docs/04-roadmap.md` para o plano completo.
 

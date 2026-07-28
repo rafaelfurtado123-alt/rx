@@ -11,6 +11,9 @@ from ..schemas.auth import CurrentUser
 from ..schemas.hd import (
     AcessoCreate,
     AcessoOut,
+    EmarAgendarRequest,
+    EmarOut,
+    EmarRegistrarRequest,
     EncerramentoRequest,
     IntercorrenciaRequest,
     ParametroRequest,
@@ -21,7 +24,7 @@ from ..schemas.hd import (
     RecepcaoRequest,
     SessaoOut,
 )
-from ..services import hd_service, prescricao_service
+from ..services import emar_service, hd_service, prescricao_service
 
 router = APIRouter(tags=["hd"])
 
@@ -48,6 +51,43 @@ async def listar_prescricoes(
     session: AsyncSession = Depends(get_authed_session),
 ):
     return await prescricao_service.listar(session, str(paciente_id))
+
+
+# ------------------------- eMAR -------------------------
+
+
+@router.post("/pacientes/{paciente_id}/emar", response_model=list[EmarOut],
+             status_code=201)
+async def agendar_emar(
+    paciente_id: uuid.UUID,
+    body: EmarAgendarRequest,
+    _: CurrentUser = Depends(require_roles("medico", "enfermeiro", "admin")),
+    session: AsyncSession = Depends(get_authed_session),
+):
+    """Agendamento manual de horários (o automático ocorre ao assinar)."""
+    return await emar_service.agendar(session, str(paciente_id), body)
+
+
+@router.get("/pacientes/{paciente_id}/emar", response_model=list[EmarOut])
+async def listar_emar(
+    paciente_id: uuid.UUID,
+    pendentes: bool = False,
+    _: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_authed_session),
+):
+    return await emar_service.listar(session, str(paciente_id), pendentes)
+
+
+@router.post("/emar/{emar_id}/registrar", response_model=EmarOut)
+async def registrar_emar(
+    emar_id: uuid.UUID,
+    body: EmarRegistrarRequest,
+    user: CurrentUser = Depends(
+        require_roles("medico", "enfermeiro", "tecnico", "admin")),
+    session: AsyncSession = Depends(get_authed_session),
+):
+    """Checagem da dose: administrado/recusado/omitido (+ lote/observação)."""
+    return await emar_service.registrar(session, str(emar_id), body, user)
 
 
 # ------------------------- Acesso vascular -------------------------
