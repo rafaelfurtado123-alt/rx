@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../theme/theme.dart';
 import '../../widgets/widgets.dart';
-import 'hd_models.dart';
 import 'hd_repository.dart';
 
 /// Prescrição de Hemodiálise — formulário completo nível Tasy.

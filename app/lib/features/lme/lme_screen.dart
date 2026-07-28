@@ -353,6 +353,39 @@ class _RevisaoCard extends StatelessWidget {
   }
 }
 
+/// Linha de checagem de um exame obrigatório do PCDT (✓ presente / ⚠ vencido /
+/// ✕ ausente) com valor e data em fonte tabular.
+class _ExameLinha extends StatelessWidget {
+  final ExameChecagem exame;
+  const _ExameLinha({required this.exame});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final (icone, cor) = switch (exame.situacao) {
+      'presente' => (Icons.check_circle_outline, c.ok),
+      'vencido' => (Icons.history_toggle_off, c.warn),
+      _ => (Icons.cancel_outlined, c.critical),
+    };
+    final valor = exame.valor != null
+        ? '${exame.valor} ${exame.unidade ?? ''}'.trim()
+        : '—';
+    final data = exame.dataColeta != null
+        ? DateFormat('dd/MM/yyyy').format(exame.dataColeta!.toLocal())
+        : '';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(children: [
+        Icon(icone, size: 16, color: cor),
+        const SizedBox(width: Gap.sm),
+        Expanded(child: Text(exame.nome)),
+        Text('$valor  $data',
+            style: NefronType.mono(color: c.textSecondary, size: 12)),
+      ]),
+    );
+  }
+}
+
 /// Card do histórico com status, validade e renovação em 1 clique.
 class _LaudoCard extends StatelessWidget {
   final Laudo laudo;
