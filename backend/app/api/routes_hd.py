@@ -53,6 +53,25 @@ async def listar_prescricoes(
     return await prescricao_service.listar(session, str(paciente_id))
 
 
+@router.get("/prescricoes/{prescricao_id}/receita/pdf")
+async def receita_pdf(
+    prescricao_id: uuid.UUID,
+    _: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_authed_session),
+):
+    """Receituário em PDF — controle especial (2 vias) se houver item
+    controlado (Portaria 344/98); o tipo sai no header X-Receita-Tipo."""
+    from fastapi.responses import Response
+
+    pdf, tipo, _presc = await prescricao_service.montar_receita(
+        session, str(prescricao_id))
+    return Response(content=pdf, media_type="application/pdf", headers={
+        "Content-Disposition":
+            f'inline; filename="receita-{prescricao_id}.pdf"',
+        "X-Receita-Tipo": tipo,
+    })
+
+
 # ------------------------- eMAR -------------------------
 
 

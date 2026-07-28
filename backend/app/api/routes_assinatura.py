@@ -59,6 +59,18 @@ async def assinar_lme_icp(
     return await assinatura_service.assinar_lme(session, str(laudo_id), user)
 
 
+@router.post("/vidaas/prescricao/{prescricao_id}", status_code=201)
+async def assinar_receita_icp(
+    prescricao_id: uuid.UUID,
+    user: CurrentUser = Depends(require_roles("medico", "admin")),
+    session: AsyncSession = Depends(get_authed_session),
+):
+    """Assina a receita (simples ou de controle especial) com o certificado
+    em nuvem; devolve também `receita_tipo`."""
+    return await assinatura_service.assinar_prescricao(
+        session, str(prescricao_id), user)
+
+
 @router.get("/{assinatura_id}/p7s")
 async def baixar_p7s(
     assinatura_id: uuid.UUID,

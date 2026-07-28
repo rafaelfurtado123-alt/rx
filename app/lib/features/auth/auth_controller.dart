@@ -132,6 +132,22 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  /// Login por certificado digital (VIDaaS): o backend já validou a aprovação
+  /// no app do PSC e devolveu refresh + vínculos (mesmo formato do 2FA).
+  Future<void> adoptVidaasLogin(Verify2FAResult result) async {
+    state = state.copyWith(
+      stage: AuthStage.selectingContext,
+      loading: false,
+      clearError: true,
+      refreshToken: result.refreshToken,
+      vinculos: result.vinculos,
+    );
+    if (result.vinculos.length == 1) {
+      final v = result.vinculos.first;
+      await selectContext(v.unidadeId, v.papel);
+    }
+  }
+
   Future<void> logout() async {
     await _storage.clear();
     state = const AuthState();

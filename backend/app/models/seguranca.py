@@ -46,6 +46,7 @@ class VidaasSessao(Base):
     access_token: Mapped[str | None] = mapped_column(Text)  # cifrar em produção
     token_expira_em: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(Text, default="pendente")
+    finalidade: Mapped[str] = mapped_column(Text, default="assinatura")  # | login
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default="now()"
     )

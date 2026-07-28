@@ -1,13 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
+import '../../widgets/vidaas_dialog.dart';
 import '../../widgets/widgets.dart';
 import 'lme_models.dart';
 import 'lme_repository.dart';
@@ -88,10 +86,10 @@ class _LmeScreenState extends ConsumerState<LmeScreen> {
     final autorizado = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => _VidaasDialog(
+      builder: (ctx) => VidaasDialog(
         authorizationUrl: url,
         isMock: isMock,
-        pollStatus: () => repo.vidaasStatus(state),
+        checkReady: () async => await repo.vidaasStatus(state) == 'autorizada',
         simularAprovacao: isMock
             ? () => ref.read(apiClientProvider).dio.get(
                 '/api/v1/assinatura/vidaas/callback',
@@ -351,141 +349,6 @@ class _RevisaoCard extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-}
-
-/// Diálogo de autorização no VIDaaS: QR/link + polling do status.
-class _VidaasDialog extends StatefulWidget {
-  final String authorizationUrl;
-  final bool isMock;
-  final Future<String> Function() pollStatus;
-  final Future<void> Function()? simularAprovacao;
-  const _VidaasDialog({
-    required this.authorizationUrl,
-    required this.isMock,
-    required this.pollStatus,
-    this.simularAprovacao,
-  });
-
-  @override
-  State<_VidaasDialog> createState() => _VidaasDialogState();
-}
-
-class _VidaasDialogState extends State<_VidaasDialog> {
-  Timer? _timer;
-  String _status = 'pendente';
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 2), (_) => _verificar());
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _verificar() async {
-    try {
-      final s = await widget.pollStatus();
-      if (!mounted) return;
-      setState(() => _status = s);
-      if (s == 'autorizada') {
-        _timer?.cancel();
-        Navigator.pop(context, true);
-      }
-    } catch (_) {
-      // erro transitório de rede: mantém o polling
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return AlertDialog(
-      title: const Text('Autorize no app VIDaaS'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Aprove a sessão de assinatura no aplicativo VIDaaS '
-            '(certificado do CRM Digital) escaneando o QR code ou '
-            'abrindo o link.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: Gap.lg),
-          Container(
-            padding: const EdgeInsets.all(Gap.md),
-            decoration: const BoxDecoration(
-                color: Colors.white, borderRadius: Radii.rMd),
-            child: QrImageView(data: widget.authorizationUrl, size: 160),
-          ),
-          const SizedBox(height: Gap.sm),
-          SelectableText(widget.authorizationUrl,
-              maxLines: 2,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: c.textSecondary)),
-          const SizedBox(height: Gap.md),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            SizedBox(
-                height: 14,
-                width: 14,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: c.primary)),
-            const SizedBox(width: Gap.sm),
-            Text('Aguardando autorização… ($_status)',
-                style: Theme.of(context).textTheme.bodySmall),
-          ]),
-          if (widget.isMock && widget.simularAprovacao != null) ...[
-            const SizedBox(height: Gap.md),
-            TextButton(
-              onPressed: () => widget.simularAprovacao!(),
-              child: const Text('Ambiente de demonstração: simular aprovação'),
-            ),
-          ],
-        ],
-      ),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar')),
-      ],
-    );
-  }
-}
-
-class _ExameLinha extends StatelessWidget {
-  final ExameChecagem exame;
-  const _ExameLinha({required this.exame});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final (icone, cor) = switch (exame.situacao) {
-      'presente' => (Icons.check_circle_outline, c.ok),
-      'vencido' => (Icons.history_toggle_off, c.warn),
-      _ => (Icons.cancel_outlined, c.critical),
-    };
-    final valor = exame.valor != null
-        ? '${exame.valor} ${exame.unidade ?? ''}'.trim()
-        : '—';
-    final data = exame.dataColeta != null
-        ? DateFormat('dd/MM/yyyy').format(exame.dataColeta!.toLocal())
-        : '';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(children: [
-        Icon(icone, size: 16, color: cor),
-        const SizedBox(width: Gap.sm),
-        Expanded(child: Text(exame.nome)),
-        Text('$valor  $data',
-            style: NefronType.mono(color: c.textSecondary, size: 12)),
-      ]),
     );
   }
 }

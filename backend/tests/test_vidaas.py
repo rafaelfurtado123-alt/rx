@@ -123,3 +123,173 @@ async def test_assinar_rascunho_falha(client, auth_headers):
 async def test_callback_state_desconhecido(client):
     r = await client.get("/api/v1/assinatura/vidaas/callback?state=inexistente&code=X")
     assert r.status_code == 404
+
+
+# ------------------- Login por certificado digital -------------------
+
+
+async def _dar_cpf_ao_medico(ctx) -> str:
+    import uuid as _uuid
+
+    from sqlalchemy import select
+
+    from app.core.database import SessionLocal
+    from app.models.core import Profissional
+
+    cpf = str(_uuid.uuid4().int)[:11]
+    async with SessionLocal() as s:
+        prof = await s.scalar(
+            select(Profissional).where(Profissional.email == ctx["email"]))
+        prof.cpf = cpf
+        await s.commit()
+    return cpf
+
+
+async def test_login_por_certificado_fluxo_completo(client, auth_headers):
+    _, ctx = auth_headers
+    cpf = await _dar_cpf_ao_medico(ctx)
+
+    # 1) Inicia o login por certificado (sem senha/TOTP)
+    r = await client.post("/api/v1/auth/vidaas/login", json={"cpf": cpf})
+    assert r.status_code == 201, r.text
+    state = r.json()["state"]
+    assert r.json()["mock"] is True
+
+    # 2) Pendente até a aprovação no app
+    r = await client.get(f"/api/v1/auth/vidaas/login/{state}")
+    assert r.json()["status"] == "pendente"
+
+    # 3) Aprovação (callback do PSC)
+    r = await client.get(
+        f"/api/v1/assinatura/vidaas/callback?state={state}&code=CERT")
+    assert r.status_code == 200
+
+    # 4) Polling devolve refresh + vínculos (mesmo formato do 2FA)
+    r = await client.get(f"/api/v1/auth/vidaas/login/{state}")
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["status"] == "autorizada"
+    assert len(data["vinculos"]) == 1
+
+    # 5) Sessão é de USO ÚNICO — segundo consumo não devolve tokens
+    r = await client.get(f"/api/v1/auth/vidaas/login/{state}")
+    assert r.json()["status"] == "expirada"
+
+    # 6) O refresh emitido funciona no fluxo normal de contexto → dashboard
+    r = await client.post("/api/v1/auth/context", json={
+        "refresh_token": data["refresh_token"],
+        "unidade_id": data["vinculos"][0]["unidade_id"],
+        "papel": "medico"})
+    assert r.status_code == 200, r.text
+    access = r.json()["access_token"]
+    r = await client.get("/api/v1/dashboard",
+                         headers={"Authorization": f"Bearer {access}"})
+    assert r.status_code == 200
+
+
+async def test_login_certificado_cpf_desconhecido(client):
+    r = await client.post("/api/v1/auth/vidaas/login",
+                          json={"cpf": "00000000000"})
+    assert r.status_code == 404
+    r = await client.post("/api/v1/auth/vidaas/login", json={"cpf": "123"})
+    assert r.status_code == 400
+
+
+# ------------------- Receitas (simples e controle especial) -------------------
+
+
+async def _prescricao_assinada(client, headers, ctx, controlado: bool) -> str:
+    import uuid as _uuid
+
+    from app.core.database import SessionLocal
+    from app.models.hd import RefMedicamento
+
+    async with SessionLocal() as s:
+        med = RefMedicamento(
+            principio_ativo=f"{'Clonazepam' if controlado else 'Losartana pot'} "
+                            f"{_uuid.uuid4().hex[:4]}",
+            apresentacao="comprimido", controlado=controlado)
+        s.add(med)
+        await s.commit()
+        med_id = str(med.id)
+
+    r = await client.post(
+        f"/api/v1/pacientes/{ctx['paciente_id']}/prescricoes", headers=headers,
+        json={"tipo": "geral", "assinar": True, "itens": [
+            {"medicamento_id": med_id, "dose": 2, "unidade_dose": "mg",
+             "via": "VO", "frequencia": "1x/dia", "duracao": "30 dias"}]})
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
+
+
+async def _autorizar_vidaas(client, headers) -> None:
+    r = await client.post("/api/v1/assinatura/vidaas/autorizacao", headers=headers)
+    state = r.json()["state"]
+    await client.get(f"/api/v1/assinatura/vidaas/callback?state={state}&code=OK")
+
+
+async def test_receita_simples_pdf_e_assinatura(client, auth_headers):
+    headers, ctx = auth_headers
+    prescricao_id = await _prescricao_assinada(client, headers, ctx,
+                                               controlado=False)
+
+    r = await client.get(f"/api/v1/prescricoes/{prescricao_id}/receita/pdf",
+                         headers=headers)
+    assert r.status_code == 200, r.text
+    assert r.content.startswith(b"%PDF")
+    assert r.headers["x-receita-tipo"] == "simples"
+
+    await _autorizar_vidaas(client, headers)
+    r = await client.post(f"/api/v1/assinatura/vidaas/prescricao/{prescricao_id}",
+                          headers=headers)
+    assert r.status_code == 201, r.text
+    assinatura = r.json()
+    assert assinatura["receita_tipo"] == "simples"
+
+    # Hash confere com o documento assinado armazenado
+    aid = assinatura["assinatura_id"]
+    r = await client.get(f"/api/v1/assinatura/{aid}/documento", headers=headers)
+    assert hashlib.sha256(r.content).hexdigest() == assinatura["hash_sha256"]
+
+
+async def test_receita_controlada_em_duas_vias(client, auth_headers):
+    headers, ctx = auth_headers
+    prescricao_id = await _prescricao_assinada(client, headers, ctx,
+                                               controlado=True)
+
+    r = await client.get(f"/api/v1/prescricoes/{prescricao_id}/receita/pdf",
+                         headers=headers)
+    assert r.status_code == 200
+    assert r.headers["x-receita-tipo"] == "controle_especial"
+
+    await _autorizar_vidaas(client, headers)
+    r = await client.post(f"/api/v1/assinatura/vidaas/prescricao/{prescricao_id}",
+                          headers=headers)
+    assert r.status_code == 201, r.text
+    assert r.json()["receita_tipo"] == "controle_especial"
+
+
+async def test_receita_exige_prescricao_assinada(client, auth_headers):
+    import uuid as _uuid
+
+    from app.core.database import SessionLocal
+    from app.models.hd import RefMedicamento
+
+    headers, ctx = auth_headers
+    async with SessionLocal() as s:
+        med = RefMedicamento(principio_ativo=f"AAS {_uuid.uuid4().hex[:4]}",
+                             apresentacao="100 mg")
+        s.add(med)
+        await s.commit()
+        med_id = str(med.id)
+
+    # Prescrição em rascunho (não assinada)
+    r = await client.post(
+        f"/api/v1/pacientes/{ctx['paciente_id']}/prescricoes", headers=headers,
+        json={"tipo": "geral", "assinar": False,
+              "itens": [{"medicamento_id": med_id, "dose": 100}]})
+    prescricao_id = r.json()["id"]
+
+    r = await client.get(f"/api/v1/prescricoes/{prescricao_id}/receita/pdf",
+                         headers=headers)
+    assert r.status_code == 409

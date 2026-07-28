@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
+import '../../widgets/vidaas_dialog.dart';
 import '../../widgets/widgets.dart';
 import '../hd/hd_models.dart' show AlertaItem;
 
@@ -100,12 +101,89 @@ class _PrescriptionScreenState extends ConsumerState<PrescriptionScreen> {
       if (assinar && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Prescrição assinada — eMAR gerado automaticamente')));
-        context.go('/pacientes/${widget.pacienteId}');
+        await _oferecerReceitaIcp(data['id'] as String);
+        if (mounted) context.go('/pacientes/${widget.pacienteId}');
       }
     } catch (e) {
       setState(() => _error = '$e');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Após assinar a prescrição, oferece a assinatura ICP-Brasil da RECEITA
+  /// (simples ou de controle especial) com o certificado em nuvem (VIDaaS).
+  Future<void> _oferecerReceitaIcp(String prescricaoId) async {
+    final quer = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Receita digital'),
+        content: const Text(
+            'Deseja assinar a receita com seu certificado ICP-Brasil '
+            '(VIDaaS/CRM Digital)? Itens controlados saem em receituário '
+            'de controle especial (2 vias).'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Agora não')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Assinar receita')),
+        ],
+      ),
+    );
+    if (quer != true || !mounted) return;
+
+    final dio = ref.read(apiClientProvider).dio;
+    Map<String, dynamic> auth;
+    try {
+      final r = await dio.post('/api/v1/assinatura/vidaas/autorizacao');
+      auth = r.data as Map<String, dynamic>;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+      return;
+    }
+    if (!mounted) return;
+
+    final state = auth['state'] as String;
+    final autorizado = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => VidaasDialog(
+        authorizationUrl: auth['authorization_url'] as String,
+        isMock: auth['mock'] as bool? ?? false,
+        subtitle: 'Aprove a assinatura da receita no aplicativo VIDaaS.',
+        checkReady: () async {
+          final r =
+              await dio.get('/api/v1/assinatura/vidaas/autorizacao/$state');
+          return (r.data as Map<String, dynamic>)['status'] == 'autorizada';
+        },
+        simularAprovacao: (auth['mock'] as bool? ?? false)
+            ? () => dio.get('/api/v1/assinatura/vidaas/callback',
+                queryParameters: {'state': state, 'code': 'DEMO'})
+            : null,
+      ),
+    );
+    if (autorizado != true || !mounted) return;
+
+    try {
+      final r =
+          await dio.post('/api/v1/assinatura/vidaas/prescricao/$prescricaoId');
+      final tipo = (r.data as Map<String, dynamic>)['receita_tipo'] as String?;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(tipo == 'controle_especial'
+                ? 'Receita de CONTROLE ESPECIAL assinada com ICP-Brasil ✓'
+                : 'Receita assinada com ICP-Brasil ✓')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
     }
   }
 

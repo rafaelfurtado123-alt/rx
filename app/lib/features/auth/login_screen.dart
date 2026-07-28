@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/providers.dart';
 import '../../theme/theme.dart';
+import '../../widgets/vidaas_dialog.dart';
 import '../../widgets/widgets.dart';
 import 'auth_controller.dart';
+import 'auth_models.dart';
 
 /// Tela de login (passo 1: e-mail + senha).
 class LoginScreen extends ConsumerStatefulWidget {
@@ -32,6 +35,79 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _email.text.trim(),
           _senha.text,
         );
+  }
+
+  /// Login por certificado digital em nuvem (VIDaaS/CRM Digital):
+  /// CPF → aprovação no app do PSC → tokens (dispensa senha e TOTP).
+  Future<void> _loginComCertificado() async {
+    final cpfCtl = TextEditingController();
+    final cpf = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Login com certificado digital'),
+        content: TextField(
+          controller: cpfCtl,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          maxLength: 11,
+          decoration: const InputDecoration(
+              labelText: 'CPF do titular do certificado', counterText: ''),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, cpfCtl.text.trim()),
+              child: const Text('Continuar')),
+        ],
+      ),
+    );
+    cpfCtl.dispose();
+    if (cpf == null || cpf.isEmpty || !mounted) return;
+
+    final dio = ref.read(apiClientProvider).dio;
+    Map<String, dynamic> auth;
+    try {
+      final r = await dio.post('/api/v1/auth/vidaas/login', data: {'cpf': cpf});
+      auth = r.data as Map<String, dynamic>;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+      return;
+    }
+    if (!mounted) return;
+
+    final state = auth['state'] as String;
+    Verify2FAResult? tokens;
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => VidaasDialog(
+        authorizationUrl: auth['authorization_url'] as String,
+        isMock: auth['mock'] as bool? ?? false,
+        subtitle: 'Aprove o LOGIN no aplicativo VIDaaS. A aprovação com seu '
+            'certificado ICP-Brasil substitui senha e código 2FA.',
+        checkReady: () async {
+          final r = await dio.get('/api/v1/auth/vidaas/login/$state');
+          final data = r.data as Map<String, dynamic>;
+          if (data['status'] == 'autorizada' && data['refresh_token'] != null) {
+            tokens = Verify2FAResult.fromJson(data);
+            return true;
+          }
+          return false;
+        },
+        simularAprovacao: (auth['mock'] as bool? ?? false)
+            ? () => dio.get('/api/v1/assinatura/vidaas/callback',
+                queryParameters: {'state': state, 'code': 'DEMO'})
+            : null,
+      ),
+    );
+    if (ok == true && tokens != null && mounted) {
+      await ref.read(authControllerProvider.notifier).adoptVidaasLogin(tokens!);
+    }
   }
 
   @override
@@ -107,6 +183,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   width: 20,
                                   child: CircularProgressIndicator(strokeWidth: 2))
                               : const Text('Entrar'),
+                        ),
+                        const SizedBox(height: Gap.md),
+                        Row(children: [
+                          Expanded(child: Divider(color: c.glassStroke)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: Gap.md),
+                            child: Text('ou',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: c.textSecondary)),
+                          ),
+                          Expanded(child: Divider(color: c.glassStroke)),
+                        ]),
+                        const SizedBox(height: Gap.md),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.verified_user_outlined),
+                          onPressed:
+                              auth.loading ? null : _loginComCertificado,
+                          label: const Text(
+                              'Entrar com certificado digital (VIDaaS)'),
                         ),
                       ],
                     ),

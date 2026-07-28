@@ -76,6 +76,39 @@ Regras: assinar é ato do **médico** (RBAC); o LME precisa estar **emitido**
 (a assinatura eletrônica interna vem antes); a sessão VIDaaS expira (~30 min)
 e cada autorização pertence ao profissional que a iniciou.
 
+## 3.1 Login por certificado digital
+
+O mesmo certificado em nuvem serve como **método de login** (substitui senha +
+TOTP — a aprovação no app do PSC já é autenticação forte: posse do celular +
+PIN/biometria + certificado ICP-Brasil do titular):
+
+| Rota | Uso |
+|------|-----|
+| `POST /api/v1/auth/vidaas/login` `{cpf}` | Inicia (CPF deve pertencer a profissional ativo) |
+| `GET  /api/v1/auth/vidaas/login/{state}` | Polling; quando autorizada, **consome** a sessão (uso único) e devolve `{refresh_token, vinculos}` — mesmo formato do 2FA |
+
+O fluxo segue normal: seleção de contexto → access token. No app, botão
+"Entrar com certificado digital (VIDaaS)" na tela de login.
+
+## 3.2 Receitas (simples e controle especial)
+
+| Rota | Uso |
+|------|-----|
+| `GET  /api/v1/prescricoes/{id}/receita/pdf` | Receituário em PDF (header `X-Receita-Tipo`) |
+| `POST /api/v1/assinatura/vidaas/prescricao/{id}` | Assina a receita com o certificado em nuvem |
+
+- A receita exige prescrição **assinada eletronicamente** (409 caso contrário).
+- Tipo automático: qualquer item com `ref.medicamento.controlado = true`
+  (Portaria SVS/MS 344/98) gera **Receituário de Controle Especial em 2 vias**
+  (1ª farmácia / 2ª paciente) com box de identificação do emitente; senão,
+  receituário simples.
+- PDF determinístico; o par PDF assinado + `.p7s` fica em
+  `seguranca.assinatura` como nos LMEs.
+- Migração: `psql "$DB" -f db/receitas.sql` (flag `controlado` + finalidade da
+  sessão VIDaaS).
+- No app: após assinar a prescrição, o sistema oferece a assinatura ICP da
+  receita no mesmo fluxo de QR/push.
+
 ## 4. Passos para produção
 
 1. **Credenciamento junto à Valid**: registrar a aplicação (client_id/secret +

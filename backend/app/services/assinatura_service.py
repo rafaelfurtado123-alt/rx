@@ -243,6 +243,39 @@ async def _sessao_autorizada(
     return sessao
 
 
+async def _executar_assinatura(
+    session: AsyncSession, user: CurrentUser,
+    entidade: str, entidade_id, pdf: bytes, alias: str,
+) -> tuple[Assinatura, dict]:
+    """Núcleo comum: hash do PDF → assinatura no PSC → persistência."""
+    sessao_vidaas = await _sessao_autorizada(session, user)
+    digest = hashlib.sha256(pdf).digest()
+
+    resultado = await get_provider().assinar_hash(
+        sessao_vidaas.access_token or "",
+        doc_id=str(entidade_id),
+        alias=alias,
+        hash_b64=base64.b64encode(digest).decode(),
+    )
+
+    assinatura = Assinatura(
+        entidade=entidade, entidade_id=entidade_id,
+        assinante_id=user.profissional_id,
+        hash_conteudo=digest.hex(), tipo="icp_brasil",
+        certificado=resultado["certificado"],
+        assinatura_b64=resultado["assinatura_b64"],
+        documento_b64=base64.b64encode(pdf).decode(),  # bytes exatos assinados
+    )
+    session.add(assinatura)
+    await session.flush()
+    return assinatura, {
+        "assinatura_id": str(assinatura.id),
+        "tipo": "icp_brasil",
+        "hash_sha256": digest.hex(),
+        "certificado": resultado["certificado"],
+    }
+
+
 async def assinar_lme(
     session: AsyncSession, laudo_id: str, user: CurrentUser
 ) -> dict:
@@ -255,42 +288,41 @@ async def assinar_lme(
             status.HTTP_409_CONFLICT,
             "emita o LME (assinatura eletrônica) antes da assinatura ICP-Brasil")
 
-    sessao_vidaas = await _sessao_autorizada(session, user)
-
-    # PDF oficial + hash SHA-256
     laudo = await lme_service.obter(session, laudo_id)
     paciente = await session.get(Paciente, laudo_row.paciente_id)
     medico = await session.get(Profissional, laudo_row.medico_id)
     unidade = await session.get(Unidade, laudo_row.unidade_id)
     pdf = pdf_service.gerar_pdf_lme(laudo, paciente, medico, unidade)
-    digest = hashlib.sha256(pdf).digest()
 
-    resultado = await get_provider().assinar_hash(
-        sessao_vidaas.access_token or "",
-        doc_id=str(laudo_row.id),
-        alias=f"LME {laudo.medicamento} — {paciente.nome if paciente else ''}",
-        hash_b64=base64.b64encode(digest).decode(),
-    )
-
-    assinatura = Assinatura(
-        entidade="lme", entidade_id=laudo_row.id,
-        assinante_id=user.profissional_id,
-        hash_conteudo=digest.hex(), tipo="icp_brasil",
-        certificado=resultado["certificado"],
-        assinatura_b64=resultado["assinatura_b64"],
-        documento_b64=base64.b64encode(pdf).decode(),  # bytes exatos assinados
-    )
-    session.add(assinatura)
-    await session.flush()
+    assinatura, saida = await _executar_assinatura(
+        session, user, "lme", laudo_row.id, pdf,
+        alias=f"LME {laudo.medicamento} — {paciente.nome if paciente else ''}")
     laudo_row.assinatura_id = assinatura.id
     await session.commit()
+    return saida
 
-    return {
-        "assinatura_id": str(assinatura.id),
-        "tipo": "icp_brasil",
-        "hash_sha256": digest.hex(),
-        "certificado": resultado["certificado"],
-    }
+
+async def assinar_prescricao(
+    session: AsyncSession, prescricao_id: str, user: CurrentUser
+) -> dict:
+    """Assina a RECEITA (simples ou controle especial) de uma prescrição.
+
+    A receita é o PDF determinístico gerado da prescrição já assinada
+    eletronicamente; o tipo sai no retorno (receita_tipo).
+    """
+    from . import prescricao_service
+
+    pdf, tipo, presc = await prescricao_service.montar_receita(
+        session, prescricao_id)
+    paciente = await session.get(Paciente, presc.paciente_id)
+
+    _, saida = await _executar_assinatura(
+        session, user, "prescricao", presc.id, pdf,
+        alias=(f"Receita {'controlada ' if tipo == 'controle_especial' else ''}"
+               f"— {paciente.nome if paciente else ''}"))
+    await session.commit()
+    saida["receita_tipo"] = tipo
+    return saida
 
 
 async def baixar_p7s(session: AsyncSession, assinatura_id: str) -> bytes:

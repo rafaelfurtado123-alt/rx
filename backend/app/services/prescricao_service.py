@@ -274,6 +274,54 @@ async def criar(
     )
 
 
+async def montar_receita(
+    session: AsyncSession, prescricao_id: str
+) -> tuple[bytes, str, Prescricao]:
+    """Gera o PDF do receituário de uma prescrição ASSINADA.
+
+    Tipo: 'controle_especial' se houver item controlado (Portaria 344/98),
+    senão 'simples'. Retorna (pdf, tipo, prescricao).
+    """
+    from ..models.core import Paciente, Profissional, Unidade
+    from . import pdf_service
+
+    presc = await session.get(Prescricao, prescricao_id)
+    if presc is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "prescrição não encontrada")
+    if presc.assinada_em is None:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "assine a prescrição antes de emitir a receita")
+
+    itens_rows = list(await session.scalars(
+        select(PrescricaoItem).where(PrescricaoItem.prescricao_id == presc.id)
+        .order_by(PrescricaoItem.ordem)))
+    itens: list[dict] = []
+    tem_controlado = False
+    for row in itens_rows:
+        med = (await session.get(RefMedicamento, row.medicamento_id)
+               if row.medicamento_id else None)
+        controlado = bool(med.controlado) if med else False
+        tem_controlado = tem_controlado or controlado
+        itens.append({
+            "nome": med.principio_ativo if med else (row.descricao_livre or "—"),
+            "apresentacao": med.apresentacao if med else None,
+            "dose": float(row.dose) if row.dose is not None else None,
+            "unidade_dose": row.unidade_dose,
+            "via": row.via,
+            "frequencia": row.frequencia,
+            "duracao": row.duracao,
+            "controlado": controlado,
+        })
+
+    tipo = "controle_especial" if tem_controlado else "simples"
+    paciente = await session.get(Paciente, presc.paciente_id)
+    medico = await session.get(Profissional, presc.prescritor_id)
+    unidade = await session.get(Unidade, presc.unidade_id)
+    pdf = pdf_service.gerar_pdf_receita(paciente, medico, unidade, itens, tipo,
+                                        presc.assinada_em)
+    return pdf, tipo, presc
+
+
 async def listar(session: AsyncSession, paciente_id: str) -> list[PrescricaoOut]:
     prescricoes = await session.scalars(
         select(Prescricao)

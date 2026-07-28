@@ -39,6 +39,7 @@ class RefMedicamento(Base):
     via_padrao: Mapped[str | None] = mapped_column(Text)
     ceaf: Mapped[bool] = mapped_column(Boolean, default=False)
     requer_lme: Mapped[bool] = mapped_column(Boolean, default=False)
+    controlado: Mapped[bool] = mapped_column(Boolean, default=False)  # Port. 344/98
     ajuste_renal: Mapped[dict | None] = mapped_column(JSONB)
     dose_maxima_dia: Mapped[float | None] = mapped_column(Numeric)
     unidade_dose: Mapped[str | None] = mapped_column(Text)

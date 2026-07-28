@@ -45,3 +45,20 @@ async def select_context(
     return await auth_service.select_context(
         session, body.refresh_token, str(body.unidade_id), body.papel
     )
+
+
+# ---------------- Login por certificado digital (VIDaaS/CRM Digital) ----------------
+
+
+@router.post("/vidaas/login", status_code=201)
+async def vidaas_login(body: dict, session: AsyncSession = Depends(get_session)):
+    """Inicia o login por certificado em nuvem — body: {"cpf": "..."}."""
+    return await auth_service.vidaas_login_iniciar(session, body.get("cpf", ""))
+
+
+@router.get("/vidaas/login/{state}")
+async def vidaas_login_status(state: str,
+                              session: AsyncSession = Depends(get_session)):
+    """Polling: {status} enquanto pendente; quando autorizada, consome a
+    sessão e devolve {refresh_token, vinculos} (mesmo formato do 2FA)."""
+    return await auth_service.vidaas_login_status(session, state)

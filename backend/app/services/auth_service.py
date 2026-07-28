@@ -1,7 +1,15 @@
-"""Regras de autenticação: login em 2 passos, 2FA e seleção de contexto."""
+"""Regras de autenticação: login em 2 passos, 2FA, seleção de contexto e
+login por CERTIFICADO DIGITAL em nuvem (VIDaaS/CRM Digital).
+
+O login por certificado dispensa senha+TOTP: a aprovação no app do PSC já é
+autenticação forte (posse do dispositivo + PIN/biometria + certificado
+ICP-Brasil do titular). O CPF informado precisa corresponder a um
+profissional ativo cadastrado.
+"""
 from __future__ import annotations
 
 import datetime as dt
+import re
 
 import jwt
 from fastapi import HTTPException, status
@@ -10,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core import security
 from ..models.core import Profissional, Vinculo
+from ..models.seguranca import VidaasSessao
 from ..schemas.auth import (
     LoginResponse,
     TokenResponse,
@@ -110,6 +119,81 @@ async def select_context(
         unidade_id=unidade_id,
         papel=papel,
     )
+
+
+# ------------------- Login por certificado digital (VIDaaS) -------------------
+async def vidaas_login_iniciar(session: AsyncSession, cpf: str) -> dict:
+    """Inicia o login por certificado: sessão PKCE com finalidade 'login'."""
+    from . import assinatura_service  # import local evita ciclo
+
+    cpf_limpo = re.sub(r"\D", "", cpf or "")
+    if len(cpf_limpo) != 11:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "CPF inválido")
+    prof = await session.scalar(
+        select(Profissional).where(Profissional.cpf == cpf_limpo,
+                                   Profissional.ativo.is_(True)))
+    if prof is None:
+        # Mensagem genérica: não revela se o CPF está ou não cadastrado
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            "profissional não habilitado para login por certificado")
+
+    verifier, challenge = assinatura_service._pkce()
+    import secrets as _secrets
+    state = _secrets.token_urlsafe(24)
+    sessao = VidaasSessao(profissional_id=prof.id, state=state,
+                          code_verifier=verifier, finalidade="login")
+    session.add(sessao)
+    await session.commit()
+    provider = assinatura_service.get_provider()
+    return {
+        "state": state,
+        "authorization_url": provider.authorization_url(state, challenge, cpf_limpo),
+        "mock": isinstance(provider, assinatura_service.MockVidaasProvider),
+    }
+
+
+async def vidaas_login_status(session: AsyncSession, state: str) -> dict:
+    """Polling do login: quando autorizada, CONSOME a sessão e emite os tokens.
+
+    O state é um segredo de 24 bytes conhecido apenas por quem iniciou o
+    fluxo (padrão análogo ao device flow). Uso único.
+    """
+    sessao = await session.scalar(
+        select(VidaasSessao).where(VidaasSessao.state == state,
+                                   VidaasSessao.finalidade == "login"))
+    if sessao is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "sessão não encontrada")
+
+    agora = dt.datetime.now(dt.timezone.utc)
+    if sessao.status == "autorizada" and sessao.token_expira_em is not None \
+            and sessao.token_expira_em < agora:
+        sessao.status = "expirada"
+        await session.commit()
+    if sessao.status != "autorizada":
+        return {"status": sessao.status}
+
+    prof = await session.get(Profissional, sessao.profissional_id)
+    if prof is None or not prof.ativo:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "profissional inválido")
+
+    vinculos = await session.scalars(
+        select(Vinculo).where(Vinculo.profissional_id == prof.id,
+                              Vinculo.ativo.is_(True)))
+    saida = [VinculoOut(unidade_id=v.unidade_id, unidade_nome=v.unidade.nome,
+                        papel=v.papel) for v in vinculos]
+    if not saida:
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "sem vínculo ativo em nenhuma unidade")
+
+    # Consome a sessão (uso único) e registra o login
+    sessao.status = "expirada"
+    prof.ultimo_login = agora
+    await session.commit()
+    return {
+        "status": "autorizada",
+        "refresh_token": security.create_refresh_token(str(prof.id)),
+        "vinculos": [v.model_dump(mode="json") for v in saida],
+    }
 
 
 # --------------------------- helpers de token ---------------------------

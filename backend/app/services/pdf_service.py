@@ -149,6 +149,86 @@ def gerar_pdf_lme(
     return buf.getvalue()
 
 
+def gerar_pdf_receita(
+    paciente: Paciente,
+    medico: Profissional,
+    unidade: Unidade,
+    itens: list[dict],
+    tipo: str,
+    data_emissao: dt.datetime | None,
+) -> bytes:
+    """PDF do receituário — 'simples' ou 'controle_especial' (Portaria 344/98).
+
+    O receituário de controle especial sai em DUAS vias na mesma folha
+    (1ª via: farmácia · 2ª via: paciente), com o box de identificação do
+    emitente exigido pela norma. Determinístico (invariant) para permitir
+    assinatura destacada verificável.
+    """
+    buf = BytesIO()
+    titulo = ("RECEITUÁRIO DE CONTROLE ESPECIAL" if tipo == "controle_especial"
+              else "RECEITUÁRIO")
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=14 * mm,
+                            bottomMargin=14 * mm, leftMargin=16 * mm,
+                            rightMargin=16 * mm, title=titulo, invariant=1)
+    s = _styles()
+    emissao = data_emissao.strftime("%d/%m/%Y") if data_emissao else "—"
+    conselho = f"{medico.conselho_tipo or 'CRM'} {medico.conselho_num or ''}" \
+               f"/{medico.conselho_uf or ''}"
+
+    def _via(rotulo_via: str | None) -> list:
+        bloco: list = [Paragraph(titulo, s["titulo"])]
+        if rotulo_via:
+            bloco.append(Paragraph(rotulo_via, s["sub"]))
+        bloco.append(HRFlowable(width="100%", color=_AZUL, thickness=1))
+        # Box de identificação do emitente (exigido no controle especial)
+        bloco.append(Paragraph("Identificação do emitente", s["secao"]))
+        bloco.append(_tabela([
+            ["Estabelecimento", f"{unidade.nome} — CNES {unidade.cnes or '—'}"],
+            ["Profissional", f"{medico.nome} — {conselho}"],
+        ], [40 * mm, 130 * mm]))
+        bloco.append(Paragraph("Paciente", s["secao"]))
+        bloco.append(_tabela([
+            ["Nome", paciente.nome],
+            ["CNS", paciente.cns or "—"],
+        ], [40 * mm, 130 * mm]))
+        bloco.append(Paragraph("Prescrição", s["secao"]))
+        for i, item in enumerate(itens, start=1):
+            partes = [item.get("nome", "—")]
+            if item.get("apresentacao"):
+                partes.append(item["apresentacao"])
+            if item.get("dose"):
+                partes.append(f"{item['dose']} {item.get('unidade_dose') or ''}".strip())
+            if item.get("via"):
+                partes.append(item["via"])
+            if item.get("frequencia"):
+                partes.append(item["frequencia"])
+            if item.get("duracao"):
+                partes.append(item["duracao"])
+            sufixo = "  [CONTROLADO]" if item.get("controlado") else ""
+            bloco.append(Paragraph(
+                f"{i}. " + " — ".join(str(p) for p in partes) + sufixo, s["corpo"]))
+        bloco.append(Spacer(1, 8 * mm))
+        bloco.append(Paragraph(f"Data de emissão: {emissao}", s["corpo"]))
+        bloco.append(Spacer(1, 10 * mm))
+        bloco.append(HRFlowable(width="60%", color=colors.grey, thickness=0.5))
+        bloco.append(Paragraph(f"{medico.nome} — {conselho}", s["sub"]))
+        return bloco
+
+    story: list = []
+    if tipo == "controle_especial":
+        story += _via("1ª via — farmácia")
+        story.append(Spacer(1, 6 * mm))
+        story.append(HRFlowable(width="100%", color=colors.grey, thickness=0.5,
+                                dash=(2, 2)))
+        story.append(Spacer(1, 6 * mm))
+        story += _via("2ª via — paciente")
+    else:
+        story += _via(None)
+
+    doc.build(story)
+    return buf.getvalue()
+
+
 def gerar_pdf_termo(texto: str, paciente: Paciente, medicamento: str,
                     aceite_por: str | None, aceite_em: dt.datetime | None) -> bytes:
     """PDF do Termo de Esclarecimento e Responsabilidade."""
