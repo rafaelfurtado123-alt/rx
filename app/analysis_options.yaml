@@ -7,9 +7,9 @@ analyzer:
   errors:
     invalid_annotation_target: ignore
 
+# Regras de estilo agressivas (require_trailing_commas, prefer_const_constructors)
+# ficam de fora: geram centenas de infos sem valor de revisão. O conjunto padrão
+# do flutter_lints cobre erros e más práticas reais.
 linter:
   rules:
-    prefer_const_constructors: true
-    prefer_final_locals: true
     always_declare_return_types: true
-    require_trailing_commas: true

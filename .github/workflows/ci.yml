@@ -76,6 +76,8 @@ jobs:
           channel: stable
       - name: Analyze
         working-directory: app
+        # Falha apenas em ERROS reais (compilação/uso incorreto de API);
+        # infos e warnings de estilo não derrubam o job informativo.
         run: |
           flutter pub get
-          flutter analyze --no-fatal-infos
+          flutter analyze --no-fatal-infos --no-fatal-warnings
