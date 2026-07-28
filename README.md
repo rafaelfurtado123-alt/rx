@@ -38,10 +38,23 @@ rx/
 │   ├── 01-arquitetura.md          ← arquitetura completa (C4, camadas, segurança, deploy)
 │   ├── 02-modelo-de-dados.md      ← modelo de dados narrativo + ERD textual
 │   ├── 03-fluxos-principais.md    ← fluxos: HD, LME, prescrição, auditoria
-│   └── 04-roadmap.md              ← fases de entrega
+│   ├── 04-roadmap.md              ← fases de entrega
+│   ├── 05-design-system.md        ← Design System néfron· (tokens, glass, componentes)
+│   └── 06-wireframes.md           ← wireframes de alta fidelidade (texto)
+├── app/                           ← frontend Flutter (Design System + telas)
+│   └── lib/
+│       ├── theme/ widgets/        ← tokens e componentes reutilizáveis
+│       ├── core/                  ← ApiClient (Dio), TokenStorage, providers
+│       ├── features/auth/         ← login, 2FA, seleção de contexto (Riverpod)
+│       ├── features/dashboard/    ← dashboard por perfil
+│       └── router.dart            ← go_router com redirect por etapa de auth
+├── backend/                       ← API FastAPI (auth próprio JWT + 2FA TOTP)
+│   └── app/{core,models,schemas,services,api}/
 └── db/
     ├── schema.sql                 ← schema PostgreSQL/Supabase completo
-    └── seed.sql                   ← dados de referência (CID-10 nefro, PCDTs, catálogos)
+    ├── seed.sql                   ← dados de referência (CID-10 nefro, PCDTs, catálogos)
+    ├── auth_fastapi_columns.sql   ← colunas de credencial (auth próprio)
+    └── rls_fastapi_context.sql    ← RLS dirigido por GUC (app.profissional_id)
 ```
 
 ---
@@ -61,12 +74,19 @@ rx/
 
 ## 5. Status de entrega
 
-- [x] **Etapa 1 — Arquitetura + Modelo de dados + Fluxos** (este commit)
-- [ ] Etapa 2 — Design System + wireframes de alta fidelidade (texto)
-- [ ] Etapa 3 — Módulo Autenticação + Dashboard
-- [ ] Etapa 4 — Prontuário + Evolução
-- [ ] Etapa 5 — Prescrição de HD
-- [ ] Etapa 6 — LME Inteligente
+- [x] **Etapa 1 — Arquitetura + Modelo de dados + Fluxos**
+- [x] **Etapa 2 — Design System `néfron·` + wireframes** (`docs/05`, `docs/06`, `app/`)
+- [x] **Etapa 3 — Autenticação (login + 2FA TOTP + RBAC) + Dashboard** (`backend/`, `app/lib/features/`)
+- [x] **Etapa 4 — Prontuário + Evolução (timeline, SOAP+IA, gráficos de tendência, Kt/V)**
+- [x] **Etapa 5 — Prescrição de HD nível Tasy + Módulo de Sessão (recepção → monitor → adequação)**
+- [x] **Etapa 6 — LME Inteligente (motor PCDT, autopreenchimento, PDF + TER, validade 90d, renovação 1 clique)**
+- [x] **Etapa 7 — Interação medicamentosa (base de pares) + eMAR + tela de prescrição geral**
+- [x] **Etapa 8 — Escala de diálise + Relatórios/Censo/Indicadores + Faturamento SUS (produção/APAC/CSV)**
+- [x] **Etapa 9 — Assinatura ICP-Brasil em nuvem via VIDaaS/CRM Digital (`docs/07`)**
+- [x] **Etapa 10 — Login por certificado digital + receitas (simples e controle especial) via VIDaaS**
+- [x] **Etapa 11 — Ambulatório conservador + cadastro de pacientes por segmento + login segmentado (equipe multi)**
+
+**Todos os módulos obrigatórios do plano original estão concluídos.** Suíte de testes: 64/64 em PostgreSQL 16 real · 52 rotas de API.
 
 Consulte `docs/04-roadmap.md` para o plano completo.
 
