@@ -32,10 +32,11 @@ git clone https://github.com/rafaelfurtado123-alt/rx.git && cd rx
 cp deploy/.env.example deploy/.env
 nano deploy/.env          # DOMAIN, DB_PASSWORD, JWT_SECRET (openssl rand -hex 32)
 
-# Frontend: coloque o build do Flutter em deploy/web/
-#   - build feito em outra máquina: envie com scp/rsync
-#   scp -r deploy/web root@SEU_IP:~/rx/deploy/
-#   - ou instale o Flutter no próprio VPS e rode ./deploy/build_web.sh https://SEU-DOMINIO
+# Frontend: use o BUILD PRONTO (sem precisar de Flutter!) do branch web-dist
+git clone -b web-dist --depth 1 https://github.com/rafaelfurtado123-alt/rx.git /tmp/webdist
+cp -r /tmp/webdist/web deploy/web
+# (o build é universal: detecta o domínio da página automaticamente)
+# Alternativas: compile com ./deploy/build_web.sh, ou envie por scp
 
 # Banco (primeira vez) + serviços
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env --profile bootstrap up migrate
@@ -74,8 +75,9 @@ Agende o backup no cron do VPS e teste a restauração periodicamente.
 
 Use quando o backend estiver em outro lugar (VPS acima, Render, Fly.io…).
 
-1. Em uma máquina com Flutter: `./deploy/build_web.sh https://api.seudominio.com.br`
-   (a URL é a do **backend**; o script já gera o `.htaccess` de SPA).
+1. Frontend pronto: baixe o zip do branch `web-dist` (Code → Download ZIP) ou
+   compile com `./deploy/build_web.sh https://api.seudominio.com.br` se a API
+   ficar em OUTRO domínio (o build pronto assume API no MESMO domínio em /api).
 2. hPanel → **Gerenciador de arquivos** (ou FTP) → envie o **conteúdo** de
    `deploy/web/` para `public_html/`.
 3. No backend, inclua o domínio do site em `NEFRON_CORS_ORIGINS`
@@ -86,14 +88,16 @@ backend continua precisando de um servidor Python + PostgreSQL em algum lugar.
 
 ---
 
-## Variáveis que importam no build do frontend
+## URL da API no frontend
 
-O app lê a URL da API em tempo de build:
-```bash
-flutter build web --release --dart-define=API_BASE_URL=https://nefron.seudominio.com.br
-```
-No deploy do VPS (Opção A) a API e o site compartilham o domínio — o nginx
-faz o proxy de `/api/` — então `API_BASE_URL` é o próprio domínio do site.
+O build é **universal por padrão**: sem `API_BASE_URL` definido, o app usa o
+próprio domínio da página (o nginx do deploy faz o proxy de `/api/`). Só passe
+`--dart-define=API_BASE_URL=...` quando a API estiver em outro domínio
+(ex.: hospedagem compartilhada + backend externo).
+
+Se o repositório estiver privado, o `git clone` no VPS pede um Personal Access
+Token (GitHub → Settings → Developer settings → Tokens) na URL:
+`https://SEU_TOKEN@github.com/rafaelfurtado123-alt/rx.git`.
 
 ## Checklist de produção
 - [ ] `JWT_SECRET` forte e fora do git (`deploy/.env`)
