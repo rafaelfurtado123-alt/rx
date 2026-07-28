@@ -33,11 +33,7 @@ class PatientDetailScreen extends ConsumerWidget {
             Tab(text: 'Evolução'),
           ]),
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => context.go('/pacientes/$pacienteId/evolucao'),
-          icon: const Icon(Icons.add),
-          label: const Text('Evolução'),
-        ),
+        floatingActionButton: _QuickActions(pacienteId: pacienteId),
         body: Column(
           children: [
             header.maybeWhen(
@@ -52,6 +48,55 @@ class PatientDetailScreen extends ConsumerWidget {
               ]),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// FAB de ações frequentes (regra dos 2 cliques): Evolução, Prescrição HD, Sessão.
+class _QuickActions extends StatelessWidget {
+  final String pacienteId;
+  const _QuickActions({required this.pacienteId});
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton.extended(
+      icon: const Icon(Icons.add),
+      label: const Text('Ações'),
+      onPressed: () => showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (ctx) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.notes_outlined),
+                title: const Text('Nova evolução (SOAP)'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.go('/pacientes/$pacienteId/evolucao');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.medication_outlined),
+                title: const Text('Prescrição de HD'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.go('/pacientes/$pacienteId/prescricao-hd');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.monitor_heart_outlined),
+                title: const Text('Sessão de HD'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.go('/pacientes/$pacienteId/sessao');
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

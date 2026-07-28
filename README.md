@@ -78,7 +78,7 @@ rx/
 - [x] **Etapa 2 — Design System `néfron·` + wireframes** (`docs/05`, `docs/06`, `app/`)
 - [x] **Etapa 3 — Autenticação (login + 2FA TOTP + RBAC) + Dashboard** (`backend/`, `app/lib/features/`)
 - [x] **Etapa 4 — Prontuário + Evolução (timeline, SOAP+IA, gráficos de tendência, Kt/V)**
-- [ ] Etapa 5 — Prescrição de HD
+- [x] **Etapa 5 — Prescrição de HD nível Tasy + Módulo de Sessão (recepção → monitor → adequação)**
 - [ ] Etapa 6 — LME Inteligente
 
 Consulte `docs/04-roadmap.md` para o plano completo.
